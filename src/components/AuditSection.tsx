@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { errText } from '../lib/errors';
 import { supabase } from '../lib/supabase';
 import type { AuditEntry, Game } from '../lib/types';
 
@@ -17,11 +18,34 @@ const ACTION_LABEL: Record<string, string> = {
   game_activated: 'Игра запущена',
   game_finished: 'Игра завершена',
   split_evenly: 'Разделено поровну',
+  phase_changed: 'Смена раунда',
+  settings_changed: 'Изменены правила',
+  placement_set: 'Клиент размещён',
+  placement_removed: 'Клиент снят с доски',
+  kam_spec_set: 'Специализация KAM',
+  purchase_pending: 'Заявка на покупку',
+  purchase_approved: 'Покупка проведена',
+  purchase_rejected: 'Заявка отклонена',
+  purchase_cancelled: 'Покупка отменена',
+  hq_request_created: 'Запрос к HQ',
+  hq_request_priced: 'Запрос к HQ оценён',
+  hq_request_deleted: 'Запрос к HQ удалён',
+  meeting_set: 'Результат встречи',
+  meeting_removed: 'Результат встречи удалён',
 };
 
-function errText(err: unknown): string {
-  if (err && typeof err === 'object' && 'message' in err) return String((err as { message: unknown }).message);
-  return 'Неизвестная ошибка';
+// Короткое описание деталей записи: стол, клиент, позиция.
+function describe(d: Record<string, unknown>): string {
+  const parts: string[] = [];
+  for (const key of ['team', 'username', 'name', 'client', 'item', 'bucket', 'spec', 'outcome'] as const) {
+    const v = d[key];
+    if (typeof v === 'string' && v) parts.push(v);
+    else if (typeof v === 'number') parts.push(String(v));
+  }
+  if (Array.isArray(d.targets) && d.targets.length) parts.push(d.targets.join(', '));
+  if (typeof d.kam === 'number') parts.push(`KAM ${d.kam}`);
+  if (typeof d.cost === 'number') parts.push(`${d.cost} мон.`);
+  return parts.length ? ` · ${parts.join(' · ')}` : '';
 }
 
 interface GroupData {
@@ -74,14 +98,11 @@ function AuditGroup({ title, gameId, refreshKey }: { title: string; gameId: stri
         <ul className="list audit">
           {data.entries.map((a) => {
             const who = a.actor_id ? (data.actors[a.actor_id] ?? 'неизвестно') : 'система';
-            const target = typeof a.details.username === 'string' ? ` · ${a.details.username}` : '';
-            const name = typeof a.details.name === 'string' ? ` · ${a.details.name}` : '';
             return (
               <li key={a.id}>
                 <time dateTime={a.created_at}>{new Date(a.created_at).toLocaleString('ru-RU')}</time>{' '}
                 <strong>{ACTION_LABEL[a.action] ?? a.action}</strong>
-                {target}
-                {name} <span className="muted">({who})</span>
+                {describe(a.details)} <span className="muted">({who})</span>
               </li>
             );
           })}

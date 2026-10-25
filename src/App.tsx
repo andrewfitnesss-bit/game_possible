@@ -1,6 +1,7 @@
 import { useAuth } from './auth';
 import { Footer } from './components/Footer';
 import { AdminPage } from './pages/AdminPage';
+import { CuratorPage } from './pages/CuratorPage';
 import { LoginPage } from './pages/LoginPage';
 import { TeamPage } from './pages/TeamPage';
 import { WaitingPage } from './pages/WaitingPage';
@@ -22,6 +23,7 @@ function Screen() {
   }
 
   if (profile.role === 'superadmin') return <AdminPage />;
+  if (profile.role === 'curator') return <CuratorPage />;
   if (!profile.team_id) return <WaitingPage />;
   return <TeamPage />;
 }

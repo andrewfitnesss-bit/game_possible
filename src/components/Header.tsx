@@ -1,6 +1,6 @@
 import { useAuth } from '../auth';
 
-const ROLE_LABEL = { superadmin: 'Супер-админ', captain: 'Капитан', member: 'Участник' } as const;
+const ROLE_LABEL = { superadmin: 'Супер-админ', captain: 'Капитан', member: 'Участник', curator: 'Куратор' } as const;
 
 export function Header() {
   const { profile, signOut } = useAuth();

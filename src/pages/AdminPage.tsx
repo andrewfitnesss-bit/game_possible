@@ -10,17 +10,31 @@ import {
 } from '@dnd-kit/core';
 import { Header } from '../components/Header';
 import { supabase } from '../lib/supabase';
+import { errText } from '../lib/errors';
 import { AuditSection } from '../components/AuditSection';
-import type { Game, Profile, Team } from '../lib/types';
+import { GameControl } from '../components/admin/GameControl';
+import { Overview } from '../components/admin/Overview';
+import { TeamWorkspace } from '../components/game/TeamWorkspace';
+import type { Game, Profile, Role, Team } from '../lib/types';
 
 const UNASSIGNED = 'unassigned';
 
-function errText(err: unknown): string {
-  if (err && typeof err === 'object' && 'message' in err) return String((err as { message: unknown }).message);
-  return 'Неизвестная ошибка';
-}
+type Tab = 'people' | 'game' | 'tables' | 'overview' | 'audit';
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'people', label: 'Участники' },
+  { id: 'game', label: 'Раунды и правила' },
+  { id: 'tables', label: 'Столы' },
+  { id: 'overview', label: 'Итоги' },
+  { id: 'audit', label: 'Аудит' },
+];
 
-function PersonCard({ person, onToggleCaptain }: { person: Profile; onToggleCaptain: (p: Profile) => void }) {
+const ROLE_OPTIONS: { id: Role; label: string }[] = [
+  { id: 'member', label: 'Участник' },
+  { id: 'captain', label: 'Капитан' },
+  { id: 'curator', label: 'Куратор' },
+];
+
+function PersonCard({ person, onRole }: { person: Profile; onRole: (p: Profile, role: Role) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: person.id });
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
@@ -36,14 +50,18 @@ function PersonCard({ person, onToggleCaptain }: { person: Profile; onToggleCapt
         {person.full_name || person.username}
         <small className="muted"> @{person.username}</small>
       </span>
-      <button
-        type="button"
-        className={person.role === 'captain' ? 'chip active' : 'chip'}
-        onClick={() => onToggleCaptain(person)}
-        title="Назначить или снять капитана"
+      <select
+        className={person.role === 'member' ? 'role' : 'role active'}
+        value={person.role}
+        onChange={(e) => onRole(person, e.target.value as Role)}
+        aria-label={`Роль: ${person.full_name || person.username}`}
       >
-        {person.role === 'captain' ? 'Капитан' : 'Сделать капитаном'}
-      </button>
+        {ROLE_OPTIONS.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.label}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
@@ -86,6 +104,8 @@ export function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [newTeam, setNewTeam] = useState('');
   const [newGame, setNewGame] = useState('');
+  const [tab, setTab] = useState<Tab>('people');
+  const [tableId, setTableId] = useState<string | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -154,8 +174,8 @@ export function AdminPage() {
     void run(() => supabase.from('profiles').update({ team_id: teamId }).eq('id', personId));
   }
 
-  function toggleCaptain(person: Profile) {
-    const role = person.role === 'captain' ? 'member' : 'captain';
+  function changeRole(person: Profile, role: Role) {
+    if (role === person.role) return;
     void run(() => supabase.from('profiles').update({ role }).eq('id', person.id));
   }
 
@@ -199,15 +219,31 @@ export function AdminPage() {
     return map;
   }, [teams, people]);
 
+  const selectedTable = teams.find((t) => t.id === tableId) ?? teams[0] ?? null;
+
   return (
     <>
       <Header />
+      <nav className="tabs" aria-label="Разделы">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className={tab === t.id ? 'tab active' : 'tab'}
+            aria-current={tab === t.id ? 'page' : undefined}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
       {error && (
         <p className="error card" role="alert">
           {error}
         </p>
       )}
 
+      {tab === 'people' && (
       <section className="card">
         <h2>Игра: {game ? game.name : 'не запущена'}</h2>
         <form className="row" onSubmit={startGame}>
@@ -222,8 +258,9 @@ export function AdminPage() {
           </button>
         </form>
       </section>
+      )}
 
-      {game && (
+      {tab === 'people' && game && (
         <section className="card">
           <div className="row between">
             <h2>Распределение по командам</h2>
@@ -247,7 +284,7 @@ export function AdminPage() {
             <div className="board">
               <Column id={UNASSIGNED} title="Ожидают назначения" count={byColumn.get(UNASSIGNED)?.length ?? 0}>
                 {(byColumn.get(UNASSIGNED) ?? []).map((p) => (
-                  <PersonCard key={p.id} person={p} onToggleCaptain={toggleCaptain} />
+                  <PersonCard key={p.id} person={p} onRole={changeRole} />
                 ))}
               </Column>
               {teams.map((t) => (
@@ -259,7 +296,7 @@ export function AdminPage() {
                   onDelete={() => removeTeam(t)}
                 >
                   {(byColumn.get(t.id) ?? []).map((p) => (
-                    <PersonCard key={p.id} person={p} onToggleCaptain={toggleCaptain} />
+                    <PersonCard key={p.id} person={p} onRole={changeRole} />
                   ))}
                 </Column>
               ))}
@@ -268,7 +305,38 @@ export function AdminPage() {
         </section>
       )}
 
-      <AuditSection refreshKey={refreshKey} />
+      {tab === 'game' && (game ? <GameControl game={game} onChanged={() => void load()} /> : <NoGame />)}
+
+      {tab === 'tables' &&
+        (!game ? (
+          <NoGame />
+        ) : !selectedTable ? (
+          <p className="card muted">Сначала создайте команды во вкладке «Участники».</p>
+        ) : (
+          <>
+            <nav className="tabs sub" aria-label="Столы">
+              {teams.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={selectedTable.id === t.id ? 'tab active' : 'tab'}
+                  onClick={() => setTableId(t.id)}
+                >
+                  {t.name}
+                </button>
+              ))}
+            </nav>
+            <TeamWorkspace key={selectedTable.id} teamId={selectedTable.id} mode="staff" />
+          </>
+        ))}
+
+      {tab === 'overview' && (game ? <Overview game={game} teams={teams} /> : <NoGame />)}
+
+      {tab === 'audit' && <AuditSection refreshKey={refreshKey} />}
     </>
   );
+}
+
+function NoGame() {
+  return <p className="card muted">Активной игры нет. Запустите её во вкладке «Участники».</p>;
 }
