@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { ChevronRight, ScrollText } from 'lucide-react';
 import { errText } from '../lib/errors';
 import { supabase } from '../lib/supabase';
 import type { AuditEntry, Game } from '../lib/types';
@@ -86,31 +87,38 @@ function AuditGroup({ title, gameId, refreshKey }: { title: string; gameId: stri
 
   return (
     <details className="audit-group" onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
-      <summary>{title}</summary>
-      {open && error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
-      {open && !data && !error && <p className="muted">Загрузка…</p>}
-      {open && data && data.entries.length === 0 && <p className="muted">Записей нет.</p>}
-      {open && data && data.entries.length > 0 && (
-        <ul className="list audit">
-          {data.entries.map((a) => {
+      <summary>
+        <ChevronRight size={16} className="chevron" />
+        {title}
+      </summary>
+      <div className="audit-body">
+        {open && error && (
+          <div className="callout callout-danger" role="alert">
+            {error}
+          </div>
+        )}
+        {open && !data && !error && <p className="muted small">Загрузка…</p>}
+        {open && data && data.entries.length === 0 && <p className="muted small">Записей нет.</p>}
+        {open &&
+          data &&
+          data.entries.map((a) => {
             const who = a.actor_id ? (data.actors[a.actor_id] ?? 'неизвестно') : 'система';
             return (
-              <li key={a.id}>
-                <time dateTime={a.created_at}>{new Date(a.created_at).toLocaleString('ru-RU')}</time>{' '}
-                <strong>{ACTION_LABEL[a.action] ?? a.action}</strong>
-                {describe(a.details)} <span className="muted">({who})</span>
-              </li>
+              <div key={a.id} className="audit-row">
+                <time dateTime={a.created_at}>
+                  {new Date(a.created_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                </time>
+                <div>
+                  <strong>{ACTION_LABEL[a.action] ?? a.action}</strong>
+                  <span className="text-2">{describe(a.details)}</span> <span className="muted">· {who}</span>
+                </div>
+              </div>
             );
           })}
-        </ul>
-      )}
-      {open && data && data.entries.length === PAGE_SIZE && (
-        <p className="muted">Показаны последние {PAGE_SIZE} записей.</p>
-      )}
+        {open && data && data.entries.length === PAGE_SIZE && (
+          <p className="muted small">Показаны последние {PAGE_SIZE} записей.</p>
+        )}
+      </div>
     </details>
   );
 }
@@ -137,9 +145,15 @@ export function AuditSection({ refreshKey }: { refreshKey: number }) {
 
   return (
     <section className="card">
-      <h2>Аудит по играм</h2>
+      <div className="card-title">
+        <ScrollText size={20} />
+        <div>
+          <h2>Аудит по играм</h2>
+          <div className="card-sub">Каждое действие участников, кураторов и ведущей</div>
+        </div>
+      </div>
       {error && (
-        <p className="error" role="alert">
+        <p className="callout callout-danger" role="alert">
           {error}
         </p>
       )}

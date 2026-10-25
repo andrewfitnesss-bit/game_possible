@@ -1,0 +1,101 @@
+/* Дизайн-токены. Все цвета и размеры берутся отсюда; тёмная тема переопределяет только токены. */
+:root {
+  color-scheme: light;
+
+  /* Бренд: арена NAL Games — тёмные угли и золото. */
+  --ink: #16120e;
+  --ink-2: #221b15;
+  --ink-3: #2e251d;
+  --ink-text: #f6efe6;
+  --ink-muted: #b3a593;
+  --gold: #f2a93b;
+  --gold-2: #ffcf6e;
+  --ember: #e8590c;
+  --ember-2: #ff7a2f;
+
+  /* Поверхности */
+  --bg: #f4f1ec;
+  --surface: #ffffff;
+  --surface-2: #faf8f5;
+  --sunken: #eee9e2;
+  --border: #e5ddd2;
+  --border-strong: #d2c6b6;
+
+  /* Текст */
+  --text: #1d1915;
+  --text-2: #4f4740;
+  --muted: #8a7f73;
+
+  /* Действия */
+  --primary: #e8590c;
+  --primary-hover: #d24d06;
+  --primary-soft: #fff0e5;
+  --primary-text: #b8460a;
+  --on-primary: #ffffff;
+  --focus: #f2a93b;
+
+  /* Статусы */
+  --success: #2b8a3e;
+  --success-soft: #e9f8ec;
+  --danger: #d6336c;
+  --danger-strong: #c92a2a;
+  --danger-soft: #fff0f3;
+  --warning: #c26a00;
+  --warning-soft: #fff4e2;
+  --info: #1971c2;
+  --info-soft: #e7f2fd;
+
+  /* Геометрия */
+  --radius-xs: 6px;
+  --radius-sm: 8px;
+  --radius: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --gap: 16px;
+  --page-max: 1480px;
+  --topbar-h: 64px;
+
+  /* Тени */
+  --shadow-sm: 0 1px 2px rgba(40, 28, 15, 0.06);
+  --shadow: 0 1px 2px rgba(40, 28, 15, 0.05), 0 4px 14px rgba(40, 28, 15, 0.06);
+  --shadow-lg: 0 10px 30px rgba(30, 20, 10, 0.16), 0 2px 6px rgba(30, 20, 10, 0.08);
+  --shadow-drag: 0 18px 40px rgba(30, 20, 10, 0.28);
+
+  /* Шрифты */
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Oswald', 'Inter', system-ui, sans-serif;
+
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #12100e;
+    --surface: #1b1815;
+    --surface-2: #211d19;
+    --sunken: #15120f;
+    --border: #2f2923;
+    --border-strong: #41382f;
+    --text: #f3ece3;
+    --text-2: #cfc4b6;
+    --muted: #93877a;
+    --primary: #ff7a2f;
+    --primary-hover: #ff8d4d;
+    --primary-soft: #3a2214;
+    --primary-text: #ffad7a;
+    --on-primary: #1a0f07;
+    --success: #69db7c;
+    --success-soft: #16301c;
+    --danger: #ff8fab;
+    --danger-strong: #ff6b6b;
+    --danger-soft: #3a1820;
+    --warning: #ffc078;
+    --warning-soft: #3a2a12;
+    --info: #74c0fc;
+    --info-soft: #132a3d;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.55);
+  }
+}

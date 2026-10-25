@@ -53,17 +53,26 @@ export function settingsOf(game: Game | null): GameSettings {
   return { ...DEFAULT_SETTINGS, ...(game?.settings ?? {}) };
 }
 
-export const PHASES: { id: Phase; label: string; minutes: number }[] = [
-  { id: 'lobby', label: 'Ожидание старта', minutes: 0 },
-  { id: 'r1p1', label: 'Round 1.1 — Build the Initial NAL', minutes: 15 },
-  { id: 'r1p2', label: 'Round 1.2 — Доп. информация о клиентах', minutes: 15 },
-  { id: 'r1p3', label: 'Round 1.3 — Specialization и пересортировка', minutes: 20 },
-  { id: 'r2p1', label: 'Round 2.1 — Local Marketing Investment Board', minutes: 20 },
-  { id: 'r2p2', label: 'Round 2.2 — HQ Capability Investment Board', minutes: 20 },
-  { id: 'r3', label: 'Round 3 — Встречи с клиентом', minutes: 90 },
-  { id: 'r4', label: 'Round 4 — Финальная корректировка', minutes: 20 },
-  { id: 'r5', label: 'Round 5 — Защита стратегии', minutes: 70 },
-  { id: 'finished', label: 'Игра завершена', minutes: 0 },
+export interface PhaseDef {
+  id: Phase;
+  label: string;
+  short: string;
+  minutes: number;
+  /** Что происходит в раунде — подсказка для ведущей и игроков. */
+  about: string;
+}
+
+export const PHASES: PhaseDef[] = [
+  { id: 'lobby', label: 'Ожидание старта', short: 'Ожидание старта', minutes: 0, about: 'Команды собираются, капитаны назначены.' },
+  { id: 'r1p1', label: 'Round 1.1 — Build the Initial NAL', short: 'R1.1 · Build the NAL', minutes: 15, about: 'Распределить клиентов между KAM, Maintenance и MidMarket.' },
+  { id: 'r1p2', label: 'Round 1.2 — Доп. информация о клиентах', short: 'R1.2 · Доп. информация', minutes: 15, about: 'Покупка Hint 1 и Hint 2, до 10 монет.' },
+  { id: 'r1p3', label: 'Round 1.3 — Specialization и пересортировка', short: 'R1.3 · Специализации', minutes: 20, about: 'Специализации KAM, SSM, пересортировка.' },
+  { id: 'r2p1', label: 'Round 2.1 — Local Marketing Investment Board', short: 'R2.1 · Маркетинг', minutes: 20, about: 'Маркетинговые активности, до 20 монет.' },
+  { id: 'r2p2', label: 'Round 2.2 — HQ Capability Investment Board', short: 'R2.2 · HQ', minutes: 20, about: 'Помощь HQ и запросы вне каталога, до 25 монет.' },
+  { id: 'r3', label: 'Round 3 — Встречи с клиентом', short: 'R3 · Встречи', minutes: 90, about: 'Куратор играет клиента и фиксирует результат.' },
+  { id: 'r4', label: 'Round 4 — Финальная корректировка', short: 'R4 · Финал', minutes: 20, about: 'Финальная раскладка, подготовка защиты.' },
+  { id: 'r5', label: 'Round 5 — Защита стратегии', short: 'R5 · Защита', minutes: 70, about: '5 минут презентации и 3 минуты вопросов.' },
+  { id: 'finished', label: 'Игра завершена', short: 'Игра завершена', minutes: 0, about: 'Подсчёт и награждение.' },
 ];
 
 export function phaseLabel(phase: Phase): string {

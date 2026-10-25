@@ -1,27 +1,29 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   DndContext,
-  KeyboardSensor,
+  DragOverlay,
   PointerSensor,
   TouchSensor,
-  useDraggable,
   useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from '@dnd-kit/core';
-import { capacityUsed, hasApproved, SPEC_LABEL } from '../../lib/game';
+import { ArrowRightLeft, Building2, CircleCheck, Eye, Headset, Inbox } from 'lucide-react';
+import { hasApproved, SPEC_LABEL } from '../../lib/game';
 import type { Bucket, Client, GameSettings, Placement, Purchase, Specialization, TeamKam } from '../../lib/types';
+import type { MenuEntry } from '../../ui/Menu';
+import { ChipBody, ClientChip } from './ClientChip';
 
-// Цель перетаскивания: pool | mm | k<номер>-active | k<номер>-maint
+// Цель перемещения: pool | mm | k<номер>-active | k<номер>-maint
 type Target = { bucket: Bucket | null; kam: number | null };
 
 function parseTarget(id: string): Target | null {
   if (id === 'pool') return { bucket: null, kam: null };
   if (id === 'mm') return { bucket: 'midmarket', kam: null };
   const m = /^k(\d+)-(active|maint)$/.exec(id);
-  if (!m) return null;
-  return { bucket: m[2] === 'active' ? 'active' : 'maintenance', kam: Number(m[1]) };
+  return m ? { bucket: m[2] === 'active' ? 'active' : 'maintenance', kam: Number(m[1]) } : null;
 }
 
 function targetId(p: Placement | undefined): string {
@@ -43,102 +45,14 @@ interface Props {
   onOpen: (client: Client) => void;
 }
 
-function Zone({ id, title, count, limit, children }: { id: string; title: string; count: number; limit?: number; children: ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id });
-  const full = limit !== undefined && count >= limit;
-  return (
-    <div ref={setNodeRef} className={isOver ? 'zone over' : 'zone'}>
-      <div className="zone-title">
-        {title}{' '}
-        <span className={full ? 'muted strong' : 'muted'}>
-          {count}
-          {limit !== undefined ? `/${limit}` : ''}
-        </span>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-interface CardProps {
-  client: Client;
-  placement: Placement | undefined;
-  purchases: Purchase[];
-  settings: GameSettings;
-  canEdit: boolean;
-  moveOptions: { id: string; label: string }[];
-  onMoveTo: (id: string) => void;
-  onSsm: (ssm: number | null) => void;
-  onOpen: () => void;
-}
-
-function ClientChip({ client, placement, purchases, settings, canEdit, moveOptions, onMoveTo, onSsm, onOpen }: CardProps) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: client.code, disabled: !canEdit });
-  const style = {
-    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-    opacity: isDragging ? 0.7 : 1,
-    zIndex: isDragging ? 20 : undefined,
-  };
-  const h1 = hasApproved(purchases, 'HINT1', client.code);
-  const h2 = hasApproved(purchases, 'HINT2', client.code);
-  return (
-    <div ref={setNodeRef} style={style} className="client-chip">
-      {canEdit && (
-        <span className="grip" {...listeners} {...attributes} aria-label={`Перетащить ${client.code}`}>
-          ⠿
-        </span>
-      )}
-      <button type="button" className="client-name" onClick={onOpen} title={client.name}>
-        <strong>{client.code}</strong> {client.name}
-        <small className="muted"> · {client.industry}</small>
-      </button>
-      <span className="chip-badges">
-        {h1 && <span className="tag">H1</span>}
-        {h2 && <span className="tag">H2</span>}
-        {placement?.bucket === 'active' &&
-          (canEdit ? (
-            <select
-              aria-label={`SSM для ${client.code}`}
-              value={placement.ssm ?? ''}
-              onChange={(e) => onSsm(e.target.value ? Number(e.target.value) : null)}
-            >
-              <option value="">без SSM</option>
-              {Array.from({ length: settings.ssm_count }, (_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  SSM {i + 1}
-                </option>
-              ))}
-            </select>
-          ) : (
-            placement.ssm && <span className="tag accent">SSM {placement.ssm}</span>
-          ))}
-        {canEdit && (
-          <select
-            aria-label={`Переместить ${client.code}`}
-            className="move"
-            value={targetId(placement)}
-            onChange={(e) => onMoveTo(e.target.value)}
-          >
-            {moveOptions.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        )}
-      </span>
-    </div>
-  );
-}
-
 export function TeamBoard({ clients, placements, kams, purchases, settings, canEdit, canSpec, onMove, onSpec, onOpen }: Props) {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
-    useSensor(KeyboardSensor),
+    useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
   );
-  // Оптимистичные перемещения до прихода ответа сервера.
+  // Оптимистичные перемещения до ответа сервера.
   const [optimistic, setOptimistic] = useState<Record<string, Placement | null>>({});
+  const [dragging, setDragging] = useState<string | null>(null);
   useEffect(() => setOptimistic({}), [placements]);
 
   const effective = useMemo(() => {
@@ -152,25 +66,27 @@ export function TeamBoard({ clients, placements, kams, purchases, settings, canE
 
   const inGame = useMemo(() => clients.filter((c) => c.in_game), [clients]);
   const list = [...effective.values()];
-  const used = capacityUsed(list, kams, settings);
-  const oe = hasApproved(purchases, 'CONSULT');
-  const specOptions = (Object.keys(SPEC_LABEL) as Specialization[]).filter((s) => s !== 'other_enterprise' || oe);
+  const consult = hasApproved(purchases, 'CONSULT');
+  const specOptions = (Object.keys(SPEC_LABEL) as Specialization[]).filter((s) => s !== 'other_enterprise' || consult);
 
-  const moveOptions = useMemo(() => {
-    const opts = [{ id: 'pool', label: 'Не распределён' }];
-    for (let k = 1; k <= settings.kams; k += 1) {
-      opts.push({ id: `k${k}-active`, label: `KAM ${k} · Active` }, { id: `k${k}-maint`, label: `KAM ${k} · Maintenance` });
-    }
-    opts.push({ id: 'mm', label: 'MidMarket' });
-    return opts;
-  }, [settings.kams]);
+  const count = (id: string) => list.filter((p) => targetId(p) === id).length;
+  const limitOf = (id: string): number | undefined =>
+    id.endsWith('-active') ? settings.max_active_per_kam : id.endsWith('-maint') ? settings.max_maint_per_kam : undefined;
+  const isFull = (id: string, code?: string) => {
+    const limit = limitOf(id);
+    if (limit === undefined) return false;
+    const inside = code ? targetId(effective.get(code)) === id : false;
+    return !inside && count(id) >= limit;
+  };
+  const ssmLoad = (n: number) => list.filter((p) => p.ssm === n).length;
+  const hintsOf = (code: string) => ({ h1: hasApproved(purchases, 'HINT1', code), h2: hasApproved(purchases, 'HINT2', code) });
 
-  async function moveTo(code: string, id: string) {
+  async function moveTo(code: string, id: string, ssmOverride?: number | null) {
     const target = parseTarget(id);
     if (!target) return;
     const current = effective.get(code);
-    if (targetId(current) === id) return;
-    const ssm = target.bucket === 'active' ? (current?.ssm ?? null) : null;
+    const ssm = target.bucket === 'active' ? (ssmOverride !== undefined ? ssmOverride : (current?.ssm ?? null)) : null;
+    if (targetId(current) === id && (current?.ssm ?? null) === ssm) return;
     setOptimistic((o) => ({
       ...o,
       [code]: target.bucket
@@ -178,119 +94,223 @@ export function TeamBoard({ clients, placements, kams, purchases, settings, canE
         : null,
     }));
     const ok = await onMove(code, target.bucket, target.kam, ssm);
-    if (!ok) setOptimistic((o) => {
-      const next = { ...o };
-      delete next[code];
-      return next;
-    });
+    if (!ok) {
+      setOptimistic((o) => {
+        const next = { ...o };
+        delete next[code];
+        return next;
+      });
+    }
   }
 
+  function onDragStart(e: DragStartEvent) {
+    setDragging(String(e.active.id));
+  }
   function onDragEnd(e: DragEndEvent) {
+    setDragging(null);
     if (e.over) void moveTo(String(e.active.id), String(e.over.id));
   }
 
-  function chips(filter: (p: Placement | undefined) => boolean) {
-    return inGame
-      .filter((c) => filter(effective.get(c.code)))
+  function menuFor(c: Client): MenuEntry[] | null {
+    const current = targetId(effective.get(c.code));
+    const p = effective.get(c.code);
+    const entries: MenuEntry[] = [{ type: 'item', label: 'Открыть карточку', icon: <Eye size={16} />, onSelect: () => onOpen(c) }];
+    if (!canEdit) return entries;
+    entries.push({ type: 'sep' }, { type: 'label', label: 'Переместить' });
+    const option = (id: string, label: string) =>
+      entries.push({
+        type: 'item',
+        label,
+        checked: current === id,
+        disabled: isFull(id, c.code),
+        onSelect: () => void moveTo(c.code, id),
+      });
+    for (let k = 1; k <= settings.kams; k += 1) {
+      option(`k${k}-active`, `KAM ${k} · Active`);
+      option(`k${k}-maint`, `KAM ${k} · Maintenance`);
+    }
+    option('mm', 'MidMarket');
+    option('pool', 'Снять с доски');
+    if (p?.bucket === 'active') {
+      entries.push({ type: 'sep' }, { type: 'label', label: 'Solution Sales Manager' });
+      entries.push({ type: 'item', label: 'Без SSM', checked: !p.ssm, onSelect: () => void moveTo(c.code, current, null) });
+      for (let n = 1; n <= settings.ssm_count; n += 1) {
+        entries.push({
+          type: 'item',
+          label: `SSM ${n} · ${ssmLoad(n)}/${settings.ssm_max_clients}`,
+          icon: <Headset size={16} />,
+          checked: p.ssm === n,
+          disabled: p.ssm !== n && ssmLoad(n) >= settings.ssm_max_clients,
+          onSelect: () => void moveTo(c.code, current, n),
+        });
+      }
+    }
+    return entries;
+  }
+
+  const chipsIn = (id: string) =>
+    inGame
+      .filter((c) => targetId(effective.get(c.code)) === id)
       .map((c) => (
         <ClientChip
           key={c.code}
           client={c}
           placement={effective.get(c.code)}
-          purchases={purchases}
-          settings={settings}
-          canEdit={canEdit}
-          moveOptions={moveOptions}
-          onMoveTo={(id) => void moveTo(c.code, id)}
-          onSsm={(ssm) => {
-            const p = effective.get(c.code);
-            if (p) void onMove(c.code, p.bucket, p.kam, ssm);
-          }}
+          hints={hintsOf(c.code)}
+          draggable={canEdit}
+          menu={menuFor(c)}
           onOpen={() => onOpen(c)}
         />
       ));
-  }
 
-  const count = (f: (p: Placement) => boolean) => list.filter(f).length;
-  const pool = inGame.filter((c) => !effective.has(c.code)).length;
+  const poolClients = chipsIn('pool');
+  const draggedClient = dragging ? inGame.find((c) => c.code === dragging) : undefined;
 
   return (
-    <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-      <div className="meters">
-        <Meter label="Sales Capacity" value={used} max={settings.capacity} />
-        {Array.from({ length: settings.ssm_count }, (_, i) => (
-          <Meter key={i} label={`SSM ${i + 1}`} value={count((p) => p.ssm === i + 1)} max={settings.ssm_max_clients} />
-        ))}
-        <span className="muted small">
-          Active — {settings.cost_active}, Maintenance — {settings.cost_maintenance}, специализация — {settings.cost_spec}
-        </span>
-      </div>
-
-      <div className="nal-board">
-        <Zone id="pool" title="Не распределены" count={pool}>
-          {chips((p) => !p)}
+    <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
+      <div className="board">
+        <Zone
+          id="pool"
+          className="lane pool"
+          head={
+            <div className="lane-head">
+              <span className="lane-icon pool">
+                <Inbox size={16} />
+              </span>
+              <div className="grow">
+                <h3>Не распределены</h3>
+                <span className="muted xsmall">
+                  {canEdit ? 'Перетащите клиента к KAM или в MidMarket, либо используйте меню «⋯»' : 'Раскладку делает капитан'}
+                </span>
+              </div>
+              <span className="badge">{poolClients.length}</span>
+            </div>
+          }
+        >
+          {poolClients.length ? (
+            <div className="pool-grid">{poolClients}</div>
+          ) : (
+            <div className="pool-done">
+              <CircleCheck size={18} /> Все клиенты распределены
+            </div>
+          )}
         </Zone>
 
-        {Array.from({ length: settings.kams }, (_, i) => {
-          const k = i + 1;
-          const spec = kams.find((x) => x.kam === k)?.specialization ?? null;
-          return (
-            <section key={k} className="kam">
-              <h3>
-                KAM {k}
-                {canSpec ? (
-                  <select
-                    aria-label={`Специализация KAM ${k}`}
-                    value={spec ?? ''}
-                    onChange={(e) => onSpec(k, (e.target.value || null) as Specialization | null)}
-                  >
-                    <option value="">без специализации</option>
-                    {specOptions.map((s) => (
-                      <option key={s} value={s}>
-                        {SPEC_LABEL[s]}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  spec && <span className="tag accent">{SPEC_LABEL[spec]}</span>
-                )}
-              </h3>
-              <Zone
-                id={`k${k}-active`}
-                title="Active"
-                count={count((p) => p.kam === k && p.bucket === 'active')}
-                limit={settings.max_active_per_kam}
-              >
-                {chips((p) => p?.kam === k && p.bucket === 'active')}
-              </Zone>
-              <Zone
-                id={`k${k}-maint`}
-                title="Maintenance"
-                count={count((p) => p.kam === k && p.bucket === 'maintenance')}
-                limit={settings.max_maint_per_kam}
-              >
-                {chips((p) => p?.kam === k && p.bucket === 'maintenance')}
-              </Zone>
-            </section>
-          );
-        })}
+        <div className="board-grid">
+          {Array.from({ length: settings.kams }, (_, i) => {
+            const k = i + 1;
+            const spec = kams.find((x) => x.kam === k)?.specialization ?? null;
+            return (
+              <section key={k} className="lane" aria-label={`KAM ${k}`}>
+                <div className="lane-head">
+                  <span className="lane-icon">K{k}</span>
+                  <div className="grow">
+                    <h3>KAM {k}</h3>
+                    {canSpec ? (
+                      <select
+                        className={spec ? 'spec-select set' : 'spec-select'}
+                        aria-label={`Специализация KAM ${k}`}
+                        value={spec ?? ''}
+                        onChange={(e) => onSpec(k, (e.target.value || null) as Specialization | null)}
+                      >
+                        <option value="">+ специализация</option>
+                        {specOptions.map((s) => (
+                          <option key={s} value={s}>
+                            {SPEC_LABEL[s]}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={spec ? 'badge badge-primary' : 'muted xsmall'}>
+                        {spec ? SPEC_LABEL[spec] : 'Территориальный KAM'}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <SlotZone id={`k${k}-active`} name="Active" kind="zone-active" limit={settings.max_active_per_kam} count={count(`k${k}-active`)} blocked={isFull(`k${k}-active`, dragging ?? undefined)}>
+                  {chipsIn(`k${k}-active`)}
+                </SlotZone>
+                <SlotZone id={`k${k}-maint`} name="Maintenance" kind="zone-maint" limit={settings.max_maint_per_kam} count={count(`k${k}-maint`)} blocked={isFull(`k${k}-maint`, dragging ?? undefined)}>
+                  {chipsIn(`k${k}-maint`)}
+                </SlotZone>
+              </section>
+            );
+          })}
 
-        <Zone id="mm" title="MidMarket" count={count((p) => p.bucket === 'midmarket')}>
-          {chips((p) => p?.bucket === 'midmarket')}
-        </Zone>
+          <section className="lane mm-col" aria-label="MidMarket">
+            <div className="lane-head">
+              <span className="lane-icon mm">
+                <Building2 size={16} />
+              </span>
+              <div className="grow">
+                <h3>MidMarket</h3>
+                <span className="muted xsmall">Передача, без затрат Capacity</span>
+              </div>
+              <span className="badge">{count('mm')}</span>
+            </div>
+            <SlotZone id="mm" name="Transfer" kind="zone-mm" count={count('mm')} blocked={false}>
+              {chipsIn('mm')}
+            </SlotZone>
+          </section>
+        </div>
       </div>
+
+      <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.2, 0.7, 0.2, 1)' }}>
+        {draggedClient ? (
+          <div className="chip overlay">
+            <ChipBody client={draggedClient} placement={effective.get(draggedClient.code)} hints={hintsOf(draggedClient.code)} />
+            <ArrowRightLeft size={16} className="muted" />
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 }
 
-export function Meter({ label, value, max }: { label: string; value: number; max: number }) {
-  const over = value > max;
+function Zone({ id, className, head, children }: { id: string; className: string; head: ReactNode; children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
   return (
-    <div className={over ? 'meter over' : 'meter'}>
-      <span>
-        {label}: <strong>{value}</strong> / {max}
-      </span>
-      <progress value={Math.min(value, max)} max={max} aria-label={label} />
+    <section ref={setNodeRef} className={`${className}${isOver ? ' is-over' : ''}`}>
+      {head}
+      {children}
+    </section>
+  );
+}
+
+function SlotZone({
+  id,
+  name,
+  kind,
+  limit,
+  count,
+  blocked,
+  children,
+}: {
+  id: string;
+  name: string;
+  kind: string;
+  limit?: number;
+  count: number;
+  blocked: boolean;
+  children: ReactNode;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  const free = limit !== undefined ? Math.max(limit - count, 0) : 0;
+  return (
+    <div ref={setNodeRef} className={`zone ${kind}${isOver ? (blocked ? ' is-blocked' : ' is-over') : ''}`}>
+      <div className="zone-head">
+        <span className="zone-name">{name}</span>
+        <span className={limit !== undefined && count >= limit ? 'zone-count full' : 'zone-count'}>
+          {count}
+          {limit !== undefined ? `/${limit}` : ''}
+        </span>
+      </div>
+      {children}
+      {Array.from({ length: free }, (_, i) => (
+        <div key={i} className="slot-empty">
+          свободно
+        </div>
+      ))}
     </div>
   );
 }

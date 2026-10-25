@@ -1,18 +1,21 @@
+import { Hourglass, RefreshCw } from 'lucide-react';
 import { useAuth } from '../auth';
-import { Header } from '../components/Header';
 
-export function WaitingPage() {
+export function WaitingPage({ title, text }: { title?: string; text?: string }) {
   const { refreshProfile } = useAuth();
   return (
-    <>
-      <Header />
-      <div className="card narrow center">
-        <h2>Ожидайте назначения в команду</h2>
-        <p className="muted">Администратор скоро распределит участников. Страница обновится сама.</p>
-        <button className="secondary" onClick={() => void refreshProfile()}>
-          Проверить сейчас
-        </button>
+    <div className="card waiting">
+      <div className="waiting-icon">
+        <Hourglass />
       </div>
-    </>
+      <h2>{title ?? 'Ожидайте назначения за стол'}</h2>
+      <p className="muted">
+        {text ?? 'Администратор скоро распределит участников по командам. Страница обновится сама.'}
+      </p>
+      <button className="btn btn-secondary" onClick={() => void refreshProfile()}>
+        <RefreshCw size={16} />
+        Проверить сейчас
+      </button>
+    </div>
   );
 }

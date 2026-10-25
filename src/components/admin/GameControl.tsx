@@ -1,57 +1,78 @@
 import { useEffect, useState, type FormEvent } from 'react';
+import { Check, Flag, ListChecks, Pause, Play, Plus, SlidersHorizontal } from 'lucide-react';
 import { DEFAULT_SETTINGS, PHASES, SETTING_LABEL, settingsOf } from '../../lib/game';
 import { errText } from '../../lib/errors';
 import { supabase } from '../../lib/supabase';
+import { formatLeft, useCountdown } from '../../lib/useGame';
+import { verticalStyle } from '../../lib/verticals';
 import type { Client, Game, GameSettings, Phase } from '../../lib/types';
-import { PhaseBanner } from '../game/PhaseBanner';
+import { useToast } from '../../ui/Toast';
 
 interface Props {
   game: Game;
   onChanged: () => void;
 }
 
-export function GameControl({ game, onChanged }: Props) {
-  const [phase, setPhase] = useState<Phase>(game.phase);
-  const [minutes, setMinutes] = useState(String(PHASES.find((p) => p.id === game.phase)?.minutes ?? 0));
-  const [settings, setSettings] = useState<Record<keyof GameSettings, string>>(() => toForm(settingsOf(game)));
-  const [clients, setClients] = useState<Client[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+const GROUPS: { title: string; keys: (keyof GameSettings)[] }[] = [
+  { title: 'Бюджет, монеты', keys: ['budget', 'cap_info', 'cap_marketing', 'cap_hq'] },
+  { title: 'Sales Capacity', keys: ['capacity', 'cost_active', 'cost_maintenance', 'cost_spec'] },
+  { title: 'Команда', keys: ['kams', 'max_active_per_kam', 'max_maint_per_kam', 'ssm_count', 'ssm_max_clients', 'max_specs', 'max_hq_requests'] },
+];
 
-  useEffect(() => {
-    setPhase(game.phase);
-    setSettings(toForm(settingsOf(game)));
-  }, [game]);
+function toForm(s: GameSettings): Record<keyof GameSettings, string> {
+  const out = {} as Record<keyof GameSettings, string>;
+  for (const key of Object.keys(s) as (keyof GameSettings)[]) out[key] = String(s[key]);
+  return out;
+}
+
+export function GameControl({ game, onChanged }: Props) {
+  const toast = useToast();
+  const [minutes, setMinutes] = useState<Record<string, string>>(() =>
+    Object.fromEntries(PHASES.map((p) => [p.id, String(p.minutes)])),
+  );
+  const [settings, setSettings] = useState(() => toForm(settingsOf(game)));
+  const [clients, setClients] = useState<Client[]>([]);
+  const [busy, setBusy] = useState(false);
+  const left = useCountdown(game.phase_ends_at);
+  const currentIndex = PHASES.findIndex((p) => p.id === game.phase);
+
+  useEffect(() => setSettings(toForm(settingsOf(game))), [game]);
 
   useEffect(() => {
     void supabase
       .from('clients')
       .select('*')
       .order('sort')
-      .then(({ data, error: err }) => {
-        if (err) setError(errText(err));
+      .then(({ data, error }) => {
+        if (error) toast.error(errText(error));
         else setClients((data ?? []) as Client[]);
       });
-  }, []);
+  }, [toast]);
 
-  async function exec(action: () => PromiseLike<{ error: unknown }>) {
+  async function updateGame(patch: Partial<Game>, success: string) {
     setBusy(true);
     try {
-      const { error: err } = await action();
-      setError(err ? errText(err) : null);
+      const { error } = await supabase.from('games').update(patch).eq('id', game.id);
+      if (error) toast.error(errText(error));
+      else toast.success(success);
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setBusy(false);
       onChanged();
     }
   }
 
-  function startPhase(e: FormEvent) {
-    e.preventDefault();
-    const m = Number(minutes);
+  function start(phase: Phase) {
+    const m = Number(minutes[phase]);
     const endsAt = m > 0 ? new Date(Date.now() + m * 60_000).toISOString() : null;
-    void exec(() => supabase.from('games').update({ phase, phase_ends_at: endsAt }).eq('id', game.id));
+    const label = PHASES.find((p) => p.id === phase)?.short ?? phase;
+    void updateGame({ phase, phase_ends_at: endsAt }, `Запущен раунд: ${label}`);
+  }
+
+  function extend(mins: number) {
+    const base = game.phase_ends_at && Date.parse(game.phase_ends_at) > Date.now() ? Date.parse(game.phase_ends_at) : Date.now();
+    void updateGame({ phase_ends_at: new Date(base + mins * 60_000).toISOString() }, `Таймер продлён на ${mins} мин`);
   }
 
   function saveSettings(e: FormEvent) {
@@ -60,104 +81,141 @@ export function GameControl({ game, onChanged }: Props) {
     for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof GameSettings)[]) {
       const v = Number(settings[key]);
       if (!Number.isFinite(v) || v < 0) {
-        setError(`Неверное значение: ${SETTING_LABEL[key]}`);
+        toast.error(`Неверное значение: ${SETTING_LABEL[key]}`);
         return;
       }
       next[key] = v;
     }
-    void exec(() => supabase.from('games').update({ settings: next }).eq('id', game.id));
+    void updateGame({ settings: next }, 'Правила сохранены');
   }
 
   async function toggleClient(c: Client) {
     setClients((list) => list.map((x) => (x.code === c.code ? { ...x, in_game: !c.in_game } : x)));
-    const { error: err } = await supabase.from('clients').update({ in_game: !c.in_game }).eq('code', c.code);
-    if (err) {
-      setError(errText(err));
+    const { error } = await supabase.from('clients').update({ in_game: !c.in_game }).eq('code', c.code);
+    if (error) {
+      toast.error(errText(error));
       setClients((list) => list.map((x) => (x.code === c.code ? c : x)));
     }
   }
 
   return (
-    <>
-      <PhaseBanner game={game} />
-      {error && (
-        <p className="error card" role="alert">
-          {error}
-        </p>
-      )}
-
+    <div className="grid-2">
       <section className="card">
-        <h2>Раунд</h2>
-        <form className="row" onSubmit={startPhase}>
-          <select
-            value={phase}
-            aria-label="Раунд"
-            onChange={(e) => {
-              const p = e.target.value as Phase;
-              setPhase(p);
-              setMinutes(String(PHASES.find((x) => x.id === p)?.minutes ?? 0));
-            }}
-          >
-            {PHASES.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-          <label className="inline">
-            Таймер, мин
-            <input type="number" min={0} max={300} value={minutes} onChange={(e) => setMinutes(e.target.value)} className="narrow-input" />
-          </label>
-          <button type="submit" disabled={busy}>
-            Запустить
-          </button>
-        </form>
-        <p className="muted small">
-          Раунд определяет, что может делать капитан: доску правят в раундах 1–4, специализации выбирают в 1.3, информацию
-          покупают в 1.2–1.3, маркетинг — в 2.1, HQ — в 2.2. Кураторы и админ не ограничены раундом.
-        </p>
-      </section>
-
-      <section className="card">
-        <h2>Правила и лимиты</h2>
-        <form className="settings" onSubmit={saveSettings}>
-          {(Object.keys(DEFAULT_SETTINGS) as (keyof GameSettings)[]).map((key) => (
-            <label key={key}>
-              {SETTING_LABEL[key]}
-              <input
-                type="number"
-                min={0}
-                step="any"
-                value={settings[key]}
-                onChange={(e) => setSettings((s) => ({ ...s, [key]: e.target.value }))}
-              />
-            </label>
-          ))}
-          <button type="submit" disabled={busy}>
-            Сохранить правила
-          </button>
-        </form>
-      </section>
-
-      <section className="card">
-        <h2>
-          Клиенты в игре <span className="muted">({clients.filter((c) => c.in_game).length} из {clients.length})</span>
-        </h2>
-        <div className="client-toggles">
-          {clients.map((c) => (
-            <label key={c.code} className="check">
-              <input type="checkbox" checked={c.in_game} onChange={() => void toggleClient(c)} />
-              <strong>{c.code}</strong> {c.name}
-            </label>
-          ))}
+        <div className="card-head">
+          <div className="card-title">
+            <Flag size={20} />
+            <div>
+              <h2>Раунды</h2>
+              <div className="card-sub">Раунд определяет, что может делать капитан. Кураторы и админ не ограничены.</div>
+            </div>
+          </div>
+          {game.phase_ends_at && (
+            <div className="row">
+              <span className={left !== null && left <= 60_000 ? 'badge badge-danger num' : 'badge badge-gold num'}>
+                {left !== null && left > 0 ? formatLeft(left) : 'время вышло'}
+              </span>
+              <button type="button" className="btn btn-secondary btn-xs" disabled={busy} onClick={() => extend(1)}>
+                <Plus size={12} />1 мин
+              </button>
+              <button type="button" className="btn btn-secondary btn-xs" disabled={busy} onClick={() => extend(5)}>
+                <Plus size={12} />5 мин
+              </button>
+              <button type="button" className="btn btn-ghost btn-xs" disabled={busy} onClick={() => void updateGame({ phase_ends_at: null }, 'Таймер остановлен')}>
+                <Pause size={12} /> Стоп
+              </button>
+            </div>
+          )}
         </div>
+        <ol className="stepper">
+          {PHASES.map((p, i) => {
+            const current = p.id === game.phase;
+            const state = current ? 'current' : i < currentIndex ? 'done' : '';
+            return (
+              <li key={p.id} className={`step ${state}`}>
+                <span className="step-num">{i < currentIndex ? <Check size={16} /> : i}</span>
+                <div>
+                  <div className="step-title">{p.label}</div>
+                  <div className="muted xsmall">{p.about}</div>
+                </div>
+                <div className="step-actions">
+                  <label className="sr-only" htmlFor={`min-${p.id}`}>
+                    Минут
+                  </label>
+                  <input
+                    id={`min-${p.id}`}
+                    type="number"
+                    min={0}
+                    max={300}
+                    className="input"
+                    value={minutes[p.id]}
+                    onChange={(e) => setMinutes((m) => ({ ...m, [p.id]: e.target.value }))}
+                    title="Минут на таймере (0 — без таймера)"
+                  />
+                  <button type="button" className={current ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'} disabled={busy} onClick={() => start(p.id)}>
+                    <Play size={14} /> {current ? 'Заново' : 'Старт'}
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       </section>
-    </>
-  );
-}
 
-function toForm(s: GameSettings): Record<keyof GameSettings, string> {
-  const out = {} as Record<keyof GameSettings, string>;
-  for (const key of Object.keys(s) as (keyof GameSettings)[]) out[key] = String(s[key]);
-  return out;
+      <div className="stack-lg">
+        <section className="card">
+          <div className="card-title">
+            <SlidersHorizontal size={20} />
+            <h2>Правила и лимиты</h2>
+          </div>
+          <form className="form" onSubmit={saveSettings}>
+            {GROUPS.map((g) => (
+              <fieldset key={g.title} className="settings-group plain">
+                <legend className="section-title">{g.title}</legend>
+                <div className="settings-grid">
+                  {g.keys.map((key) => (
+                    <label key={key} className="field">
+                      {SETTING_LABEL[key]}
+                      <input
+                        type="number"
+                        min={0}
+                        step="any"
+                        value={settings[key]}
+                        onChange={(e) => setSettings((s) => ({ ...s, [key]: e.target.value }))}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ))}
+            <button type="submit" className="btn btn-primary" disabled={busy}>
+              Сохранить правила
+            </button>
+          </form>
+        </section>
+
+        <section className="card">
+          <div className="card-head">
+            <div className="card-title">
+              <ListChecks size={20} />
+              <h2>Клиенты в игре</h2>
+            </div>
+            <span className="badge">
+              {clients.filter((c) => c.in_game).length} из {clients.length}
+            </span>
+          </div>
+          <div className="toggle-grid">
+            {clients.map((c) => (
+              <label key={c.code} className={c.in_game ? 'toggle' : 'toggle off'}>
+                <input type="checkbox" checked={c.in_game} onChange={() => void toggleClient(c)} />
+                <span className="code-badge" style={verticalStyle(c.code)}>
+                  {c.code}
+                </span>
+                <span>{c.name}</span>
+              </label>
+            ))}
+          </div>
+        </section>
+      </div>
+    </div>
+  );
 }

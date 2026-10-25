@@ -1,118 +1,181 @@
 import { useState, type FormEvent } from 'react';
-import type { GameSettings, HqRequest, Purchase } from '../../lib/types';
+import { Lightbulb, Plus, Trash2 } from 'lucide-react';
+import { verticalStyle } from '../../lib/verticals';
+import type { Client, GameSettings, HqRequest, Purchase } from '../../lib/types';
+import { useConfirm } from '../../ui/Confirm';
+import { Empty } from '../../ui/kit';
+import type { WorkspaceActions } from './actions';
 
 interface Props {
   requests: HqRequest[];
   purchases: Purchase[];
+  clients: Client[];
   settings: GameSettings;
   canCreate: boolean;
   staff: boolean;
   busy: boolean;
-  onCreate: (title: string, barrier: string, targets: string[], priority: number) => Promise<boolean>;
-  onPrice: (id: number, price: number | null) => void;
-  onDelete: (id: number) => void;
+  actions: WorkspaceActions;
 }
 
-const PRIORITY_LABEL = { 1: 'Высокий', 2: 'Средний', 3: 'Низкий' } as const;
+const PRIORITY = {
+  1: { label: 'Высокий', cls: 'badge badge-danger' },
+  2: { label: 'Средний', cls: 'badge badge-warning' },
+  3: { label: 'Низкий', cls: 'badge' },
+} as const;
 
-export function HqRequestsPanel({ requests, purchases, settings, canCreate, staff, busy, onCreate, onPrice, onDelete }: Props) {
+export function HqRequestsPanel({ requests, purchases, clients, settings, canCreate, staff, busy, actions }: Props) {
+  const ask = useConfirm();
   const [title, setTitle] = useState('');
   const [barrier, setBarrier] = useState('');
-  const [targets, setTargets] = useState('');
+  const [targets, setTargets] = useState<string[]>([]);
   const [priority, setPriority] = useState(2);
   const [prices, setPrices] = useState<Record<number, string>>({});
 
-  const bought = (id: number) => purchases.some((p) => p.request_id === id && (p.status === 'approved' || p.status === 'pending'));
+  const status = (id: number) => purchases.find((p) => p.request_id === id && (p.status === 'approved' || p.status === 'pending'))?.status;
+  const inGame = clients.filter((c) => c.in_game);
+  const canAdd = canCreate && requests.length < settings.max_hq_requests;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    const list = targets.split(/[\s,;]+/).map((t) => t.trim().toUpperCase()).filter(Boolean);
-    if (await onCreate(title, barrier, list, priority)) {
+    if (await actions.createHqRequest(title, barrier, targets, priority)) {
       setTitle('');
       setBarrier('');
-      setTargets('');
+      setTargets([]);
       setPriority(2);
     }
   }
 
+  async function remove(r: HqRequest) {
+    const ok = await ask({ title: 'Удалить запрос?', message: r.title, confirmLabel: 'Удалить', danger: true });
+    if (ok !== null) void actions.deleteHqRequest(r.id);
+  }
+
   return (
-    <section className="card">
-      <h2>Запросы к HQ вне каталога</h2>
-      <p className="muted small">
-        До {settings.max_hq_requests} запросов на команду. Организаторы оценивают каждый (обычно 7–10 монет), после этого
-        его можно купить в разделе «Покупки».
-      </p>
-
-      {requests.length > 0 && (
-        <ul className="list">
-          {requests.map((r) => (
-            <li key={r.id} className="request">
-              <div>
-                <strong>{r.title}</strong> <span className="tag">{PRIORITY_LABEL[r.priority]}</span>
-                {r.barrier && <div className="small">{r.barrier}</div>}
-                <div className="muted small">
-                  Клиенты: {r.targets.join(', ') || '—'} · Цена: {r.price === null ? 'не оценён' : `${r.price} мон.`}
-                  {bought(r.id) && ' · куплен'}
+    <div className="grid-2">
+      <section className="card">
+        <div className="card-head">
+          <div className="card-title">
+            <Lightbulb size={20} />
+            <div>
+              <h2>Запросы к HQ вне каталога</h2>
+              <div className="card-sub">
+                {requests.length} из {settings.max_hq_requests}. Организаторы оценивают запрос (обычно 7–10 монет), после
+                этого его можно купить в магазине.
+              </div>
+            </div>
+          </div>
+        </div>
+        {requests.length === 0 && <Empty title="Запросов пока нет">Опишите, какой помощи от HQ не хватает в каталоге.</Empty>}
+        <div className="pur-list">
+          {requests.map((r) => {
+            const st = status(r.id);
+            return (
+              <article key={r.id} className="pur">
+                <span className="pur-icon">
+                  <Lightbulb size={18} />
+                </span>
+                <div>
+                  <div className="row">
+                    <span className="pur-title">{r.title}</span>
+                    <span className={PRIORITY[r.priority].cls}>{PRIORITY[r.priority].label}</span>
+                  </div>
+                  {r.barrier && <div className="pur-just">{r.barrier}</div>}
+                  {r.targets.length > 0 && (
+                    <div className="targets-line">
+                      {r.targets.map((t) => (
+                        <span key={t} className="code-badge" style={verticalStyle(t)}>
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div className="row">
-                {staff && !bought(r.id) && (
-                  <>
-                    <input
-                      type="number"
-                      min={0}
-                      max={25}
-                      className="narrow-input"
-                      aria-label="Цена в монетах"
-                      value={prices[r.id] ?? (r.price ?? '')}
-                      onChange={(e) => setPrices((p) => ({ ...p, [r.id]: e.target.value }))}
-                    />
-                    <button
-                      type="button"
-                      className="chip"
-                      disabled={busy}
-                      onClick={() => {
-                        const v = prices[r.id] ?? String(r.price ?? '');
-                        onPrice(r.id, v === '' ? null : Number(v));
-                      }}
-                    >
-                      Сохранить цену
-                    </button>
-                  </>
-                )}
-                {(staff || canCreate) && !bought(r.id) && (
-                  <button
-                    type="button"
-                    className="chip"
-                    disabled={busy}
-                    onClick={() => window.confirm(`Удалить запрос «${r.title}»?`) && onDelete(r.id)}
-                  >
-                    Удалить
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-      {requests.length === 0 && <p className="muted">Запросов нет.</p>}
+                <div className="pur-side">
+                  {r.price !== null ? <span className="coin">{r.price}</span> : <span className="badge">не оценён</span>}
+                  {st && <span className={st === 'approved' ? 'badge badge-success' : 'badge badge-warning'}>{st === 'approved' ? 'куплен' : 'заявка'}</span>}
+                  {!st && (
+                    <div className="pur-actions">
+                      {staff && (
+                        <>
+                          <input
+                            type="number"
+                            min={0}
+                            max={25}
+                            className="input select-sm price-input"
+                            aria-label="Цена в монетах"
+                            value={prices[r.id] ?? (r.price ?? '')}
+                            onChange={(e) => setPrices((p) => ({ ...p, [r.id]: e.target.value }))}
+                          />
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-xs"
+                            disabled={busy}
+                            onClick={() => {
+                              const v = prices[r.id] ?? String(r.price ?? '');
+                              void actions.priceHqRequest(r.id, v === '' ? null : Number(v));
+                            }}
+                          >
+                            Оценить
+                          </button>
+                        </>
+                      )}
+                      {(staff || canCreate) && (
+                        <button type="button" className="btn btn-ghost btn-xs" disabled={busy} onClick={() => void remove(r)} aria-label="Удалить запрос">
+                          <Trash2 size={14} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
 
-      {canCreate && requests.length < settings.max_hq_requests && (
-        <form className="purchase-form" onSubmit={(e) => void submit(e)}>
-          <label>
-            Что нужно от HQ
-            <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} required />
-          </label>
-          <label>
-            Какой барьер снимает и как применим
-            <textarea value={barrier} onChange={(e) => setBarrier(e.target.value)} maxLength={1000} rows={2} />
-          </label>
-          <div className="row">
-            <label>
-              Клиенты (коды через запятую)
-              <input value={targets} onChange={(e) => setTargets(e.target.value)} placeholder="G1, B3" />
+      <section className="card">
+        <div className="card-title">
+          <Plus size={20} />
+          <h2>Новый запрос</h2>
+        </div>
+        {!canCreate ? (
+          <Empty title="Сейчас запросы не создаются">Капитан добавляет запросы в раунде R2.2.</Empty>
+        ) : !canAdd ? (
+          <Empty title="Лимит запросов исчерпан">Удалите неоценённый запрос, чтобы добавить новый.</Empty>
+        ) : (
+          <form className="form" onSubmit={(e) => void submit(e)}>
+            <label className="field">
+              Что нужно от HQ
+              <input value={title} onChange={(e) => setTitle(e.target.value)} maxLength={200} required placeholder="Например: локальный SOC playbook" />
             </label>
-            <label>
+            <label className="field">
+              Какой барьер снимает
+              <textarea value={barrier} onChange={(e) => setBarrier(e.target.value)} maxLength={1000} rows={3} placeholder="Барьер клиента и как будем применять" />
+            </label>
+            <div className="field">
+              Клиенты
+              <div className="target-grid compact">
+                {inGame.map((c) => {
+                  const on = targets.includes(c.code);
+                  return (
+                    <button
+                      key={c.code}
+                      type="button"
+                      className="target"
+                      aria-pressed={on}
+                      title={c.name}
+                      onClick={() => setTargets((t) => (on ? t.filter((x) => x !== c.code) : [...t, c.code]))}
+                    >
+                      <span className="code-badge" style={verticalStyle(c.code)}>
+                        {c.code}
+                      </span>
+                      <span>{c.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <label className="field">
               Приоритет
               <select value={priority} onChange={(e) => setPriority(Number(e.target.value))}>
                 <option value={1}>Высокий</option>
@@ -120,12 +183,12 @@ export function HqRequestsPanel({ requests, purchases, settings, canCreate, staf
                 <option value={3}>Низкий</option>
               </select>
             </label>
-          </div>
-          <button type="submit" disabled={busy || !title.trim()}>
-            Добавить запрос
-          </button>
-        </form>
-      )}
-    </section>
+            <button type="submit" className="btn btn-primary" disabled={busy || !title.trim()}>
+              <Plus size={16} /> Добавить запрос
+            </button>
+          </form>
+        )}
+      </section>
+    </div>
   );
 }

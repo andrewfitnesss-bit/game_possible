@@ -1,8 +1,9 @@
+import { Check, ClipboardCheck, X } from 'lucide-react';
 import { checkpoints, settingsOf } from '../../lib/game';
 import type { TeamData } from '../../lib/useTeamData';
 
-export function CheckpointsPanel({ data }: { data: TeamData }) {
-  const groups = checkpoints({
+export function teamChecks(data: TeamData) {
+  return checkpoints({
     clients: data.clients,
     catalog: data.catalog,
     placements: data.placements,
@@ -11,24 +12,39 @@ export function CheckpointsPanel({ data }: { data: TeamData }) {
     meetings: data.meetings.length,
     settings: settingsOf(data.game),
   });
+}
+
+export function CheckpointsPanel({ data }: { data: TeamData }) {
+  const groups = teamChecks(data);
   return (
-    <section className="card">
-      <h2>Контрольные точки</h2>
-      <div className="checkpoints">
-        {groups.map((g) => (
-          <div key={g.title}>
-            <h3>{g.title}</h3>
-            <ul className="list">
+    <div className="grid-auto">
+      {groups.map((g) => {
+        const done = g.checks.filter((c) => c.ok).length;
+        return (
+          <section key={g.title} className="card">
+            <div className="card-head">
+              <div className="card-title">
+                <ClipboardCheck size={20} />
+                <h2>{g.title}</h2>
+              </div>
+              <span className={done === g.checks.length ? 'badge badge-success' : 'badge badge-warning'}>
+                {done}/{g.checks.length}
+              </span>
+            </div>
+            <div>
               {g.checks.map((c) => (
-                <li key={c.label} className={c.ok ? 'check-ok' : 'check-bad'}>
-                  {c.ok ? '✓' : '✗'} {c.label}
-                  {c.detail && <span className="muted small"> — {c.detail}</span>}
-                </li>
+                <div key={c.label} className="check-item">
+                  <span className={c.ok ? 'check-icon ok' : 'check-icon bad'}>{c.ok ? <Check /> : <X />}</span>
+                  <div>
+                    <div className="strong small">{c.label}</div>
+                    {c.detail && <div className="muted xsmall">{c.detail}</div>}
+                  </div>
+                </div>
               ))}
-            </ul>
-          </div>
-        ))}
-      </div>
-    </section>
+            </div>
+          </section>
+        );
+      })}
+    </div>
   );
 }

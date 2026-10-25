@@ -1,70 +1,95 @@
-import { useEffect, useRef } from 'react';
-import type { Client, ClientHint } from '../../lib/types';
+import { Lock, Sparkles, X } from 'lucide-react';
+import { verticalStyle } from '../../lib/verticals';
+import type { Client, ClientHint, Placement } from '../../lib/types';
+import { Modal, closeDialog } from '../../ui/Modal';
 
 interface Props {
   client: Client;
   hints: ClientHint[];
+  placement: Placement | undefined;
   staff: boolean;
   onClose: () => void;
 }
 
-export function ClientDialog({ client, hints, staff, onClose }: Props) {
-  const ref = useRef<HTMLDialogElement>(null);
+function placementText(p: Placement | undefined): string {
+  if (!p) return 'Не распределён';
+  if (p.bucket === 'midmarket') return 'MidMarket';
+  return `KAM ${p.kam} · ${p.bucket === 'active' ? 'Active' : 'Maintenance'}${p.ssm ? ` · SSM ${p.ssm}` : ''}`;
+}
 
-  useEffect(() => {
-    const dialog = ref.current;
-    if (dialog && !dialog.open) dialog.showModal();
-  }, []);
-
-  const own = hints.filter((h) => h.client_code === client.code).sort((a, b) => a.level - b.level);
+export function ClientDialog({ client, hints, placement, staff, onClose }: Props) {
+  const own = hints.filter((h) => h.client_code === client.code);
+  const hint = (level: 1 | 2) => own.find((h) => h.level === level);
 
   return (
-    <dialog ref={ref} className="dialog" onClose={onClose} onClick={(e) => e.target === ref.current && ref.current?.close()}>
-      <div className="dialog-body">
-        <div className="row between">
-          <h2>
-            {client.code} {client.name}
-          </h2>
-          <button type="button" className="icon" onClick={() => ref.current?.close()} aria-label="Закрыть">
-            ✕
-          </button>
+    <Modal
+      width={660}
+      onClose={onClose}
+      header={
+        <div className="client-hero" style={verticalStyle(client.code)}>
+          <div className="row between top">
+            <span className="code-badge" style={verticalStyle(client.code)}>
+              {client.code}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon btn-sm hero-close"
+              onClick={(e) => closeDialog(e.currentTarget)}
+              aria-label="Закрыть"
+            >
+              <X size={18} />
+            </button>
+          </div>
+          <h2>{client.name}</h2>
+          <div className="row hero-tags">
+            <span className="badge badge-gold">{client.industry}</span>
+            <span className="badge badge-glass">
+              {placementText(placement)}
+            </span>
+          </div>
         </div>
-        <table className="profile">
-          <tbody>
-            <tr>
-              <th>Industry</th>
-              <td>{client.industry}</td>
-            </tr>
-            <tr>
-              <th>Business</th>
-              <td>{client.business}</td>
-            </tr>
-            <tr>
-              <th>Employees</th>
-              <td>{client.employees}</td>
-            </tr>
-            <tr>
-              <th>KL Related</th>
-              <td>{client.kl_related}</td>
-            </tr>
-            {client.extra && (
-              <tr>
-                <th>Extra</th>
-                <td>{client.extra}</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-        {own.length === 0 && (
-          <p className="muted">{staff ? 'Подсказок нет.' : 'Подсказки не куплены. Их продаёт куратор стола.'}</p>
+      }
+    >
+      <p className="text-2 dialog-lead">
+        {client.business}
+      </p>
+      <dl className="facts">
+        <div className="fact">
+          <dt>Employees</dt>
+          <dd>{client.employees}</dd>
+        </div>
+        <div className="fact">
+          <dt>KL Related</dt>
+          <dd>{client.kl_related}</dd>
+        </div>
+        {client.extra && (
+          <div className="fact">
+            <dt>Extra</dt>
+            <dd>{client.extra}</dd>
+          </div>
         )}
-        {own.map((h) => (
-          <section key={h.level} className="hint">
-            <h3>Hint {h.level}</h3>
+      </dl>
+
+      {([1, 2] as const).map((level) => {
+        const h = hint(level);
+        return h ? (
+          <section key={level} className="hint-card open">
+            <span className="section-title">
+              <Sparkles size={14} /> Hint {level}
+            </span>
             <p>{h.body}</p>
           </section>
-        ))}
-      </div>
-    </dialog>
+        ) : (
+          <section key={level} className="hint-card locked">
+            <span className="section-title">
+              <Lock size={14} /> Hint {level}
+            </span>
+            <span className="small">
+              {staff ? 'Подсказки нет в справочнике.' : `Не куплено. ${level === 2 ? 'Покупается после Hint 1. ' : ''}Стоимость — 1 монета у куратора стола.`}
+            </span>
+          </section>
+        );
+      })}
+    </Modal>
   );
 }

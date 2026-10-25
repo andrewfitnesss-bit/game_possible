@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { Lightbulb, RefreshCw, Trophy } from 'lucide-react';
 import { capacityUsed, settingsOf, spendOf } from '../../lib/game';
 import { errText } from '../../lib/errors';
 import { supabase } from '../../lib/supabase';
+import { verticalStyle } from '../../lib/verticals';
+import { Empty, money } from '../../ui/kit';
 import type { Game, HqRequest, MeetingResult, Placement, Purchase, Team, TeamKam } from '../../lib/types';
 
 interface AllData {
@@ -12,7 +15,6 @@ interface AllData {
   requests: HqRequest[];
 }
 
-const money = (n: number) => `$${n.toLocaleString('en-US')}`;
 
 // Сводка по всем столам: состояние, запросы к HQ, заготовка под итоговый подсчёт.
 export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
@@ -57,21 +59,25 @@ export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
   return (
     <>
       {error && (
-        <p className="error card" role="alert">
+        <div className="callout callout-danger" role="alert">
           {error}
-        </p>
+        </div>
       )}
       <section className="card">
-        <div className="row between">
-          <h2>Итоги по столам</h2>
-          <button type="button" className="secondary" onClick={() => void load()}>
-            Обновить
+        <div className="card-head">
+          <div className="card-title">
+            <Trophy size={20} />
+            <div>
+              <h2>Итоги по столам</h2>
+              <div className="card-sub">
+                Расчёт ожидаемой выручки появится, когда будут готовы правила клиентов (05_Client_Master).
+              </div>
+            </div>
+          </div>
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => void load()}>
+            <RefreshCw size={14} /> Обновить
           </button>
         </div>
-        <p className="muted small">
-          Подсчёт ожидаемой выручки появится, когда будут готовы правила клиентов (05_Client_Master). Пока видно состояние
-          столов и суммы встреч Round 3.
-        </p>
         {data && (
           <div className="table-wrap">
             <table className="table">
@@ -97,7 +103,7 @@ export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
                   const mt = data.meetings.filter((x) => x.team_id === t.id);
                   return (
                     <tr key={t.id}>
-                      <td>{t.name}</td>
+                      <td className="strong">{t.name}</td>
                       <td>{pl.filter((x) => x.bucket === 'active').length}</td>
                       <td>{pl.filter((x) => x.bucket === 'maintenance').length}</td>
                       <td>{pl.filter((x) => x.bucket === 'midmarket').length}</td>
@@ -110,7 +116,9 @@ export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
                       </td>
                       <td>{pu.filter((x) => x.status === 'pending').length}</td>
                       <td>{money(mt.reduce((s, x) => s + x.amount, 0))}</td>
-                      <td className="muted">—</td>
+                      <td>
+                        <span className="badge">скоро</span>
+                      </td>
                     </tr>
                   );
                 })}
@@ -121,8 +129,14 @@ export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
       </section>
 
       <section className="card">
-        <h2>Запросы к HQ со всех столов</h2>
-        {data && data.requests.length === 0 && <p className="muted">Запросов пока нет.</p>}
+        <div className="card-title">
+          <Lightbulb size={20} />
+          <div>
+            <h2>Запросы к HQ со всех столов</h2>
+            <div className="card-sub">Повторяющиеся запросы разных столов — темы для HQ</div>
+          </div>
+        </div>
+        {data && data.requests.length === 0 && <Empty title="Запросов пока нет" />}
         {data && data.requests.length > 0 && (
           <div className="table-wrap">
             <table className="table">
@@ -144,10 +158,24 @@ export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
                       {r.barrier && <div className="muted small">{r.barrier}</div>}
                     </td>
                     <td>{teamName(r.team_id)}</td>
-                    <td>{r.targets.join(', ') || '—'}</td>
+                    <td>
+                      <div className="targets-line">
+                        {r.targets.map((t) => (
+                          <span key={t} className="code-badge" style={verticalStyle(t)}>
+                            {t}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
                     <td>{r.priority}</td>
-                    <td>{r.price ?? '—'}</td>
-                    <td>{data.purchases.some((p) => p.request_id === r.id && p.status === 'approved') ? 'да' : 'нет'}</td>
+                    <td>{r.price === null ? '—' : <span className="coin">{r.price}</span>}</td>
+                    <td>
+                      {data.purchases.some((p) => p.request_id === r.id && p.status === 'approved') ? (
+                        <span className="badge badge-success">да</span>
+                      ) : (
+                        <span className="badge">нет</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
