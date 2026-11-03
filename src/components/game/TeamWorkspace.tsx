@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useT, type TKey } from '../../i18n/prefs';
-import { BOARD_PHASES, FREE_SPEC_PHASES, HQ_REQUEST_PHASES, settingsOf, SPEC_PHASES, specCharge, spendOf, stageProgress, unplacedClients } from '../../lib/game';
+import { BOARD_PHASES, FREE_SPEC_PHASES, HQ_REQUEST_PHASES, PURCHASE_PHASES, settingsOf, SPEC_PHASES, specCharge, spendOf, stageProgress, unplacedClients } from '../../lib/game';
 import { errText } from '../../lib/errors';
 import { supabase } from '../../lib/supabase';
 import type { Client, Specialization } from '../../lib/types';
@@ -128,6 +128,19 @@ export function TeamWorkspace({ teamId, mode }: { teamId: string; mode: Workspac
   const openClient: Client | undefined = openCode ? data.clients.find((c) => c.code === openCode) : undefined;
   const todo = progress.steps.filter((s) => s.value < 1);
 
+  const canBuyHints = staff || (captain && PURCHASE_PHASES.info.includes(phase));
+  const hintLock = canBuyHints ? null : captain || staff ? t('client.opensIn', { phase: t(`phaseShort.${PURCHASE_PHASES.info[0]}` as TKey) }) : t('client.captainBuys');
+
+  // Подсказка покупается сразу, после подтверждения необратимости. Используется в магазине и в карточке клиента.
+  async function buyHint(item: 'HINT1' | 'HINT2', c: Client): Promise<boolean> {
+    const ok = await ask({
+      title: t('shop.buyHintTitle', { hint: item === 'HINT1' ? 'Hint 1' : 'Hint 2', code: c.code }),
+      message: t('shop.buyHintText', { name: c.name }),
+      confirmLabel: t('shop.buyFor', { n: 1 }),
+    });
+    return ok !== null && actions.createPurchase(item, [c.code], '', null);
+  }
+
   // Обучение стоит монеты: до конца R1.3 его можно бесплатно сменить, потом каждое новое — за новые монеты.
   async function changeSpec(kam: number, spec: Specialization | null) {
     const free = FREE_SPEC_PHASES.includes(phase);
@@ -236,6 +249,8 @@ export function TeamWorkspace({ teamId, mode }: { teamId: string; mode: Workspac
           captain={captain}
           busy={busy}
           actions={actions}
+          canBuyHints={canBuyHints}
+          onBuyHint={buyHint}
           onOpenClient={(c) => setOpenCode(c.code)}
         />
       )}
@@ -285,6 +300,9 @@ export function TeamWorkspace({ teamId, mode }: { teamId: string; mode: Workspac
           hints={data.hints}
           placement={data.placements.find((p) => p.client_code === openClient.code)}
           staff={staff}
+          busy={busy}
+          hintLock={hintLock}
+          onBuyHint={(item) => buyHint(item, openClient)}
           onClose={() => setOpenCode(null)}
         />
       )}

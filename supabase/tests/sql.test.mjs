@@ -199,5 +199,23 @@ const direct = await as(cap, `insert into purchases (team_id, item, category, co
   .catch((e) => e.message);
 check('direct insert blocked by RLS', direct !== 'inserted', direct);
 
+console.log('Новая игра и перенос игроков');
+const capRole = async () => (await db.query(`select p.role, p.game_id, t.name as team from profiles p left join teams t on t.id = p.team_id where p.id = $1`, [cap])).rows[0];
+await expectErr('only admin restarts', cap, `select public.start_game('X', 'restart')`, [], 'E_NO_RIGHTS');
+const g2 = (await expectOk('restart game', admin, `select public.start_game('Game 2', 'restart') as id`)).rows[0].id;
+let c2 = await capRole();
+check('restart: captain keeps table and role', c2.game_id === g2 && c2.team === 'Table 1' && c2.role === 'captain', JSON.stringify(c2));
+check('restart: board is empty', (await db.query(`select count(*)::int as n from placements p join teams t on t.id = p.team_id where t.game_id = $1`, [g2])).rows[0].n === 0);
+const g3 = (await expectOk('reseat game', admin, `select public.start_game('Game 3', 'reseat') as id`)).rows[0].id;
+c2 = await capRole();
+check('reseat: everyone waits, captain becomes member', c2.game_id === g3 && c2.team === null && c2.role === 'member', JSON.stringify(c2));
+const curReseat = (await db.query(`select role, team_id from profiles where id = $1`, [cur])).rows[0];
+check('reseat: curator stays curator', curReseat.role === 'curator' && curReseat.team_id === null, JSON.stringify(curReseat));
+await expectOk('empty game', admin, `select public.start_game('Game 4', 'empty')`);
+const stuck = (await db.query(`select count(*)::int as n from profiles p join games g on g.id = p.game_id where not g.is_active`)).rows[0].n;
+check('empty: players stay in the old game', stuck >= 4, stuck);
+const adopted = (await expectOk('adopt players', admin, `select public.adopt_players() as n`)).rows[0].n;
+check('adopt moves everyone', adopted >= 4 && (await db.query(`select count(*)::int as n from profiles p join games g on g.id = p.game_id where not g.is_active`)).rows[0].n === 0, adopted);
+
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
 process.exit(failures ? 1 : 0);

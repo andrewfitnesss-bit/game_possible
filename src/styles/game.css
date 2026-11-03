@@ -384,3 +384,19 @@ fieldset.plain legend { padding: 0; margin-bottom: 10px; }
 .step-chip.ok { background: var(--success-soft); color: var(--success); }
 .live-dot::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulse 1.6s ease-in-out infinite; }
 @media (max-width: 900px) { .progress-row { grid-template-columns: 1fr; gap: 8px; } }
+
+/* ---------- Покупка подсказок и новая игра ---------- */
+.buy-hint { gap: 6px; }
+.buy-hint .coin { font-size: 12px; }
+.btn-primary.buy-hint .coin { color: inherit; }
+.hint-card.locked .row { gap: 10px; }
+.mode-option {
+  display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--surface); cursor: pointer;
+}
+.mode-option input { margin-top: 3px; }
+.mode-option svg { flex: none; margin-top: 1px; color: var(--muted); }
+.mode-option .grow { display: flex; flex-direction: column; gap: 2px; }
+.mode-option.on { border-color: var(--primary); background: var(--primary-soft); }
+.mode-option.on svg { color: var(--primary-text); }
+.callout.stuck { align-items: center; }

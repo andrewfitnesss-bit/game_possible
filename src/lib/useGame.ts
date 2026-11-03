@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { supabase } from './supabase';
 import type { Game } from './types';
 
 // Игра пользователя (или текущая активная, если игрок не привязан) с живыми обновлениями раунда и таймера.
 export function useGame(gameId: string | null) {
   const [game, setGame] = useState<Game | null>(null);
+  // Хук используется в нескольких местах сразу — у каждого свой канал, иначе Supabase вернёт уже подписанный.
+  const instance = useId();
 
   const load = useCallback(async () => {
     const query = gameId
@@ -17,13 +19,13 @@ export function useGame(gameId: string | null) {
   useEffect(() => {
     void load();
     const channel = supabase
-      .channel(`game-status-${gameId ?? 'active'}`)
+      .channel(`game-status-${gameId ?? 'active'}-${instance}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'games' }, () => void load())
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [gameId, load]);
+  }, [gameId, load, instance]);
 
   return game;
 }

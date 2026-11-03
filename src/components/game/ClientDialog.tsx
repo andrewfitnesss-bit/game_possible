@@ -3,12 +3,17 @@ import { useT, type T } from '../../i18n/prefs';
 import { verticalStyle } from '../../lib/verticals';
 import type { Client, ClientHint, Placement } from '../../lib/types';
 import { Modal, closeDialog } from '../../ui/Modal';
+import { BuyHintButton } from './ShopPanel';
 
 interface Props {
   client: Client;
   hints: ClientHint[];
   placement: Placement | undefined;
   staff: boolean;
+  busy: boolean;
+  /** Почему подсказку сейчас купить нельзя (раунд или роль); null — можно. */
+  hintLock: string | null;
+  onBuyHint: (item: 'HINT1' | 'HINT2') => Promise<boolean>;
   onClose: () => void;
 }
 
@@ -19,7 +24,7 @@ export function placementText(p: Placement | undefined, t: T): string {
   return t('placement.kam', { kam: p.kam ?? '', bucket }) + (p.ssm ? t('placement.ssm', { n: p.ssm }) : '');
 }
 
-export function ClientDialog({ client, hints, placement, staff, onClose }: Props) {
+export function ClientDialog({ client, hints, placement, staff, busy, hintLock, onBuyHint, onClose }: Props) {
   const t = useT();
   const hint = (level: 1 | 2) => hints.find((h) => h.client_code === client.code && h.level === level);
 
@@ -76,9 +81,18 @@ export function ClientDialog({ client, hints, placement, staff, onClose }: Props
           </section>
         ) : (
           <section key={level} className="hint-card locked">
-            <span className="section-title">
-              <Lock size={14} /> Hint {level}
-            </span>
+            <div className="row between">
+              <span className="section-title">
+                <Lock size={14} /> Hint {level}
+              </span>
+              {staff ? null : level === 2 && !hint(1) ? (
+                <span className="muted xsmall">{t('client.hint2After')}</span>
+              ) : hintLock ? (
+                <span className="muted xsmall">{hintLock}</span>
+              ) : (
+                <BuyHintButton large hint={level === 1 ? 'HINT1' : 'HINT2'} busy={busy} onClick={() => void onBuyHint(level === 1 ? 'HINT1' : 'HINT2')} />
+              )}
+            </div>
             <span className="small">{staff ? t('client.hintMissing') : level === 2 ? t('client.hint2Locked') : t('client.hintLocked')}</span>
           </section>
         );

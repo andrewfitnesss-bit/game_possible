@@ -4,6 +4,7 @@ import { AuthProvider } from './auth';
 import { App } from './App';
 import { PrefsProvider } from './i18n/prefs';
 import { ConfirmProvider } from './ui/Confirm';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 import { ToastProvider } from './ui/Toast';
 import './styles/index.css';
 
@@ -12,14 +13,16 @@ if (!root) throw new Error('Не найден #root');
 
 createRoot(root).render(
   <StrictMode>
-    <AuthProvider>
-      <PrefsProvider>
-        <ToastProvider>
-          <ConfirmProvider>
-            <App />
-          </ConfirmProvider>
-        </ToastProvider>
-      </PrefsProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <PrefsProvider>
+          <ToastProvider>
+            <ConfirmProvider>
+              <App />
+            </ConfirmProvider>
+          </ToastProvider>
+        </PrefsProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   </StrictMode>,
 );

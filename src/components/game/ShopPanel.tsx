@@ -20,6 +20,8 @@ interface Props {
   captain: boolean;
   busy: boolean;
   actions: WorkspaceActions;
+  canBuyHints: boolean;
+  onBuyHint: (item: 'HINT1' | 'HINT2', c: Client) => Promise<boolean>;
   onOpenClient: (c: Client) => void;
 }
 
@@ -33,7 +35,7 @@ function defaultSection(phase: Phase): Section {
   return 'info';
 }
 
-export function ShopPanel({ data, settings, spend, phase, staff, captain, busy, actions, onOpenClient }: Props) {
+export function ShopPanel({ data, settings, spend, phase, staff, captain, busy, actions, canBuyHints, onBuyHint, onOpenClient }: Props) {
   const t = useT();
   const ask = useConfirm();
   const { catalog, secrets, clients, purchases, hqRequests } = data;
@@ -83,16 +85,7 @@ export function ShopPanel({ data, settings, spend, phase, staff, captain, busy, 
     [catalog, hqRequests, secrets],
   );
 
-  // Подсказки и консультация покупаются в одно действие с подтверждением необратимости.
-  async function buyHint(item: 'HINT1' | 'HINT2', c: Client) {
-    const ok = await ask({
-      title: t('shop.buyHintTitle', { hint: item === 'HINT1' ? 'Hint 1' : 'Hint 2', code: c.code }),
-      message: t('shop.buyHintText', { name: c.name }),
-      confirmLabel: t('shop.buyFor', { n: 1 }),
-    });
-    if (ok !== null) void actions.createPurchase(item, [c.code], '', null);
-  }
-
+  // Консультация покупается в одно действие с подтверждением необратимости.
   async function buyConsult() {
     const ok = await ask({ title: t('shop.buyConsultTitle'), message: t('shop.buyConsultText'), confirmLabel: t('shop.buyFor', { n: 1 }) });
     if (ok !== null) void actions.createPurchase('CONSULT', [], '', null);
@@ -179,10 +172,8 @@ export function ShopPanel({ data, settings, spend, phase, staff, captain, busy, 
                   <span className="hint-state">
                     {h1 && <span className="pip">H1</span>}
                     {h2 && <span className="pip">H2</span>}
-                    {next && canBuy('info') ? (
-                      <button type="button" className="btn btn-secondary btn-xs" disabled={busy} onClick={() => void buyHint(next, c)}>
-                        {next === 'HINT1' ? 'H1' : 'H2'} · 1
-                      </button>
+                    {next && canBuyHints ? (
+                      <BuyHintButton hint={next} busy={busy} onClick={() => void onBuyHint(next, c)} />
                     ) : !next ? (
                       <button type="button" className="btn btn-ghost btn-xs" onClick={() => onOpenClient(c)} aria-label={t('board.openCard')}>
                         <Eye size={14} />
@@ -281,5 +272,23 @@ export function ShopPanel({ data, settings, spend, phase, staff, captain, busy, 
         />
       )}
     </div>
+  );
+}
+
+/** Кнопка покупки подсказки: что покупаем и сколько стоит. */
+export function BuyHintButton({ hint, busy, onClick, large }: { hint: 'HINT1' | 'HINT2'; busy: boolean; onClick: () => void; large?: boolean }) {
+  const t = useT();
+  const name = hint === 'HINT1' ? 'Hint 1' : 'Hint 2';
+  return (
+    <button
+      type="button"
+      className={large ? 'btn btn-primary btn-sm buy-hint' : 'btn btn-secondary btn-xs buy-hint'}
+      disabled={busy}
+      onClick={onClick}
+      title={t('shop.buyHintTitleAttr', { hint: name })}
+    >
+      {t('shop.buyHintBtn', { hint: name })}
+      <span className="coin">1</span>
+    </button>
   );
 }

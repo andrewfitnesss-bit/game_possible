@@ -11,7 +11,7 @@ const NO_GAME = 'none';
 // Короткое описание деталей записи: стол, клиент, позиция.
 function describe(d: Record<string, unknown>, t: T): string {
   const parts: string[] = [];
-  for (const key of ['team', 'username', 'name', 'client', 'item', 'bucket', 'spec', 'outcome'] as const) {
+  for (const key of ['team', 'username', 'name', 'client', 'item', 'bucket', 'spec', 'outcome', 'mode', 'players'] as const) {
     const v = d[key];
     if (typeof v === 'string' && v) parts.push(v);
     else if (typeof v === 'number') parts.push(String(v));
