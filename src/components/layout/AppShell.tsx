@@ -117,7 +117,7 @@ function GameStatus({ game }: { game: Game }) {
     ssmMax: s.ssm_max_clients,
     requests: s.max_hq_requests,
   };
-  const items = t(`rules.${game.phase}.items` as TKey, vars).split('\n');
+  const items = t(`rules.${phase}.items` as TKey, vars).split('\n');
 
   return (
     <div
