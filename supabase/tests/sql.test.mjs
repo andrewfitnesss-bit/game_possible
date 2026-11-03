@@ -199,12 +199,26 @@ const direct = await as(cap, `insert into purchases (team_id, item, category, co
   .catch((e) => e.message);
 check('direct insert blocked by RLS', direct !== 'inserted', direct);
 
+console.log('Названия столов');
+// После «Разделить поровну» капитан мог оказаться за любым столом — берём его текущий.
+await db.query(`update profiles set role = 'captain' where id = $1`, [cap]);
+const capTeam = (await db.query(`select team_id from profiles where id = $1`, [cap])).rows[0].team_id;
+const capTeamName = (await db.query(`select name from teams where id = $1`, [capTeam])).rows[0].name;
+const otherName = capTeam === t1 ? 'table 2' : 'table 1';
+await expectOk('captain renames table', cap, `select public.rename_team($1, '  Lisbon  ')`, [capTeam]);
+check('name trimmed and saved', (await db.query(`select name from teams where id = $1`, [capTeam])).rows[0].name === 'Lisbon');
+await expectErr('member cannot rename', mem, `select public.rename_team($1, 'Oslo')`, [t1], 'E_NO_RIGHTS_RENAME');
+await expectErr('name taken in game', cap, `select public.rename_team($1, $2)`, [capTeam, otherName], 'E_TEAM_NAME_TAKEN');
+await expectErr('name too short', cap, `select public.rename_team($1, 'A')`, [capTeam], 'E_TEAM_NAME_LENGTH');
+await expectOk('admin renames back', admin, `select public.rename_team($1, $2)`, [capTeam, capTeamName]);
+check('rename audited', (await db.query(`select count(*)::int as n from audit_log where action = 'team_updated'`)).rows[0].n >= 2);
+
 console.log('Новая игра и перенос игроков');
 const capRole = async () => (await db.query(`select p.role, p.game_id, t.name as team from profiles p left join teams t on t.id = p.team_id where p.id = $1`, [cap])).rows[0];
 await expectErr('only admin restarts', cap, `select public.start_game('X', 'restart')`, [], 'E_NO_RIGHTS');
 const g2 = (await expectOk('restart game', admin, `select public.start_game('Game 2', 'restart') as id`)).rows[0].id;
 let c2 = await capRole();
-check('restart: captain keeps table and role', c2.game_id === g2 && c2.team === 'Table 1' && c2.role === 'captain', JSON.stringify(c2));
+check('restart: captain keeps table and role', c2.game_id === g2 && c2.team === capTeamName && c2.role === 'captain', JSON.stringify(c2));
 check('restart: board is empty', (await db.query(`select count(*)::int as n from placements p join teams t on t.id = p.team_id where t.game_id = $1`, [g2])).rows[0].n === 0);
 const g3 = (await expectOk('reseat game', admin, `select public.start_game('Game 3', 'reseat') as id`)).rows[0].id;
 c2 = await capRole();

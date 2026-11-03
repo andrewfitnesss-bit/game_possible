@@ -401,3 +401,15 @@ fieldset.plain legend { padding: 0; margin-bottom: 10px; }
 .mode-option.on svg { color: var(--primary-text); }
 .callout.stuck { align-items: center; }
 .waiting .center-row { justify-content: center; }
+
+/* ---------- Название стола и массовое создание ---------- */
+.team-name-row { display: flex; align-items: center; gap: 6px; }
+.team-rename { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.team-rename .input { width: min(320px, 70vw); font-size: 18px; font-weight: 600; }
+.bulk-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 12px 14px; border-radius: var(--radius); background: var(--surface-2); border: 1px dashed var(--border-strong);
+}
+.bulk-row > svg { color: var(--primary); flex: none; }
+.bulk-row .grow { min-width: 220px; }
+.bulk-row.first { border-style: solid; border-color: var(--primary); background: var(--primary-soft); }

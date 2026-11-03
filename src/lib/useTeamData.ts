@@ -126,6 +126,7 @@ export function useTeamData(teamId: string | null) {
       );
     }
     channel = channel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games' }, scheduleLoad);
+    channel = channel.on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'teams', filter: `id=eq.${teamId}` }, scheduleLoad);
     channel.subscribe();
     return () => {
       if (timer.current) clearTimeout(timer.current);

@@ -28,6 +28,7 @@ import { HqRequestsPanel } from './HqRequestsPanel';
 import { MeetingsPanel } from './MeetingsPanel';
 import { ShopPanel } from './ShopPanel';
 import { TeamBoard } from './TeamBoard';
+import { TeamName } from './TeamName';
 
 export type WorkspaceMode = 'viewer' | 'captain' | 'staff';
 type Tab = 'board' | 'shop' | 'hq' | 'meetings' | 'checks' | 'team';
@@ -176,7 +177,12 @@ export function TeamWorkspace({ teamId, mode }: { teamId: string; mode: Workspac
         <div className="card-head">
           <div>
             <span className="section-title">{t('ws.table')}</span>
-            <h1 className="team-name">{data.team.name}</h1>
+            <TeamName
+              name={data.team.name}
+              canRename={staff || captain}
+              busy={busy}
+              onRename={(name) => call('rename_team', { p_team: teamId, p_name: name }, 'ws.renamed')}
+            />
             <div className="card-sub">
               {staff ? t('ws.modeStaff') : captain ? t('ws.modeCaptain') : t('ws.modeViewer')} · {t(`phaseAbout.${phase}` as TKey)}
             </div>

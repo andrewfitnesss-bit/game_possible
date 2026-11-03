@@ -10,8 +10,9 @@ import {
   useSensors,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import { Crown, Hourglass, Plus, Shuffle, Trash2, UserCog, Users } from 'lucide-react';
-import { useT, type TKey } from '../../i18n/prefs';
+import { Crown, Dices, Hourglass, Plus, Shuffle, Trash2, UserCog, Users } from 'lucide-react';
+import { usePrefs, useT, type TKey } from '../../i18n/prefs';
+import { pickCapitals } from '../../lib/capitals';
 import type { Profile, Role, Team } from '../../lib/types';
 import { useConfirm } from '../../ui/Confirm';
 import { Avatar, Stat } from '../../ui/kit';
@@ -27,6 +28,7 @@ interface Props {
   onMove: (personId: string, teamId: string | null) => void;
   onRole: (person: Profile, role: Role) => void;
   onAddTeam: (name: string) => void;
+  onAddTeams: (names: string[]) => void;
   onRemoveTeam: (team: Team) => void;
   onSplit: () => void;
 }
@@ -88,10 +90,11 @@ function TeamLane({ id, title, icon, count, extra, children }: { id: string; tit
   );
 }
 
-export function PeoplePanel({ teams, people, busy, onMove, onRole, onAddTeam, onRemoveTeam, onSplit }: Props) {
-  const t = useT();
+export function PeoplePanel({ teams, people, busy, onMove, onRole, onAddTeam, onAddTeams, onRemoveTeam, onSplit }: Props) {
+  const { t, lang } = usePrefs();
   const ask = useConfirm();
   const [newTeam, setNewTeam] = useState('');
+  const [bulkCount, setBulkCount] = useState('6');
   const [dragging, setDragging] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -124,6 +127,14 @@ export function PeoplePanel({ teams, people, busy, onMove, onRole, onAddTeam, on
     if (!name) return;
     setNewTeam('');
     onAddTeam(name);
+  }
+
+  // Массовое создание: случайные столицы, которых ещё нет среди столов этой игры.
+  function addBulk(e: FormEvent) {
+    e.preventDefault();
+    const n = Math.min(Math.max(Math.floor(Number(bulkCount)) || 0, 1), 30);
+    const names = pickCapitals(n, lang, teams.map((x) => x.name));
+    if (names.length) onAddTeams(names);
   }
 
   async function split() {
@@ -182,6 +193,33 @@ export function PeoplePanel({ teams, people, busy, onMove, onRole, onAddTeam, on
             </button>
           </div>
         </div>
+
+        <form className={teams.length ? 'bulk-row' : 'bulk-row first'} onSubmit={addBulk}>
+          <Dices size={20} />
+          <div className="grow">
+            <strong>{t('people.bulkTitle')}</strong>
+            <div className="muted small">
+              {players.length > 0
+                ? t('people.bulkHint', { players: players.length, per: Math.ceil(players.length / Math.max(Number(bulkCount) || 1, 1)) })
+                : t('people.bulkHintEmpty')}
+            </div>
+          </div>
+          <label className="row">
+            <span className="small">{t('people.bulkCount')}</span>
+            <input
+              type="number"
+              min={1}
+              max={30}
+              className="input select-sm price-input"
+              value={bulkCount}
+              onChange={(e) => setBulkCount(e.target.value)}
+              aria-label={t('people.bulkCount')}
+            />
+          </label>
+          <button type="submit" className={teams.length ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm'} disabled={busy}>
+            <Plus size={16} /> {t('people.bulkCreate')}
+          </button>
+        </form>
 
         <DndContext sensors={sensors} onDragStart={(e) => setDragging(String(e.active.id))} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
           <div className="team-board">

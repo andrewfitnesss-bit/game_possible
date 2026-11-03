@@ -76,6 +76,7 @@ export function AdminPage() {
       .channel('admin-profiles')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'profiles' }, () => void load())
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'games' }, () => void load())
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'teams' }, () => void load())
       .subscribe();
     return () => {
       void supabase.removeChannel(channel);
@@ -181,6 +182,12 @@ export function AdminPage() {
             onMove={movePerson}
             onRole={changeRole}
             onAddTeam={(name) => void run(() => supabase.from('teams').insert({ game_id: game.id, name }), t('admin.tableAdded', { name }))}
+            onAddTeams={(names) =>
+              void run(
+                () => supabase.from('teams').insert(names.map((name) => ({ game_id: game.id, name }))),
+                t('admin.tablesAdded', { n: names.length, names: names.join(', ') }),
+              )
+            }
             onRemoveTeam={(team) => void run(() => supabase.from('teams').delete().eq('id', team.id), t('admin.tableRemoved', { name: team.name }))}
             onSplit={() => void run(() => supabase.rpc('split_evenly'), t('admin.splitDone'))}
           />
