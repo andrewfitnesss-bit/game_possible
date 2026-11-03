@@ -13,7 +13,7 @@ import {
   Users,
 } from 'lucide-react';
 import { useT, type TKey } from '../../i18n/prefs';
-import { BOARD_PHASES, HQ_REQUEST_PHASES, settingsOf, SPEC_PHASES, spendOf, stageProgress, unplacedClients } from '../../lib/game';
+import { BOARD_PHASES, FREE_SPEC_PHASES, HQ_REQUEST_PHASES, settingsOf, SPEC_PHASES, specCharge, spendOf, stageProgress, unplacedClients } from '../../lib/game';
 import { errText } from '../../lib/errors';
 import { supabase } from '../../lib/supabase';
 import type { Client, Specialization } from '../../lib/types';
@@ -120,7 +120,7 @@ export function TeamWorkspace({ teamId, mode }: { teamId: string; mode: Workspac
   const canSpec = staff || (captain && SPEC_PHASES.includes(phase));
   const canHqRequest = staff || (captain && HQ_REQUEST_PHASES.includes(phase));
   const state = teamState(data);
-  const spend = spendOf(data.purchases, data.kams, settings);
+  const spend = spendOf(data.purchases, data.trainings, settings);
   const progress = stageProgress(phase, state);
   const specs = data.kams.filter((k) => k.specialization).length;
   const unplaced = unplacedClients(data.clients, data.placements).length;
@@ -128,15 +128,20 @@ export function TeamWorkspace({ teamId, mode }: { teamId: string; mode: Workspac
   const openClient: Client | undefined = openCode ? data.clients.find((c) => c.code === openCode) : undefined;
   const todo = progress.steps.filter((s) => s.value < 1);
 
+  // Обучение стоит монеты: до конца R1.3 его можно бесплатно сменить, потом каждое новое — за новые монеты.
   async function changeSpec(kam: number, spec: Specialization | null) {
+    const free = FREE_SPEC_PHASES.includes(phase);
     const current = data?.kams.find((k) => k.kam === kam)?.specialization ?? null;
-    // Новое обучение стоит монеты — подтверждаем, смена направления у обученного KAM бесплатна.
-    if (spec && !current) {
+    const cost = spec ? specCharge(phase, data?.trainings ?? [], kam, spec, settings) : 0;
+    if (spec && cost > 0) {
       const ok = await ask({
         title: t('board.specConfirmTitle', { n: kam, spec: t(`spec.${spec}` as TKey) }),
-        message: t('board.specConfirmText', { cost: settings.cost_spec }),
-        confirmLabel: t('board.specConfirm', { cost: settings.cost_spec }),
+        message: free ? t('board.specConfirmText', { cost }) : t('board.specRetrainText', { cost }),
+        confirmLabel: t('board.specConfirm', { cost }),
       });
+      if (ok === null) return;
+    } else if (!spec && current && !free) {
+      const ok = await ask({ title: t('board.specRemoveTitle', { n: kam }), message: t('board.specRemoveText'), confirmLabel: t('common.confirm'), danger: true });
       if (ok === null) return;
     }
     void call('set_kam_spec', { p_team: teamId, p_kam: kam, p_spec: spec });

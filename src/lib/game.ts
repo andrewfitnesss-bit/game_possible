@@ -11,6 +11,7 @@ import type {
   Profile,
   Purchase,
   Specialization,
+  SpecTraining,
   TeamKam,
 } from './types';
 
@@ -57,7 +58,9 @@ export const PLAYABLE_PHASES = PHASES.length - 2;
 
 // Что капитан может делать в раунде. Куратор и админ не ограничены. Сервер проверяет то же самое.
 export const BOARD_PHASES: Phase[] = ['r1p1', 'r1p2', 'r1p3', 'r2p1', 'r2p2', 'r3', 'r4'];
-export const SPEC_PHASES: Phase[] = ['r1p3'];
+export const SPEC_PHASES: Phase[] = ['r1p3', 'r2p1', 'r2p2', 'r3', 'r4'];
+/** До конца этих раундов обучение KAM можно сменить бесплатно (как public.spec_phase_free). */
+export const FREE_SPEC_PHASES: Phase[] = ['lobby', 'r1p1', 'r1p2', 'r1p3'];
 export const PURCHASE_PHASES: Record<Category, Phase[]> = {
   info: ['r1p2', 'r1p3'],
   marketing: ['r2p1'],
@@ -73,11 +76,11 @@ export interface Spend {
   byCategory: Record<Category, number>;
 }
 
-/** Потрачено командой: проведённые покупки плюс обучение KAM (как public.team_spent). */
-export function spendOf(purchases: Purchase[], kams: TeamKam[], s: GameSettings): Spend {
+/** Потрачено командой: проведённые покупки плюс все оплаченные обучения KAM (как public.team_spent). */
+export function spendOf(purchases: Purchase[], trainings: SpecTraining[], s: GameSettings): Spend {
   const byCategory: Record<Category, number> = { info: 0, marketing: 0, hq: 0 };
   for (const p of purchases) if (p.status === 'approved') byCategory[p.category] += p.cost;
-  const specs = kams.filter((k) => k.specialization).length * s.cost_spec;
+  const specs = trainings.length * s.cost_spec;
   return { total: byCategory.info + byCategory.marketing + byCategory.hq + specs, specs, byCategory };
 }
 
@@ -103,10 +106,18 @@ export interface TeamState {
   catalog: CatalogItem[];
   placements: Placement[];
   kams: TeamKam[];
+  trainings: SpecTraining[];
   purchases: Purchase[];
   meetings: MeetingResult[];
   members: Profile[];
   settings: GameSettings;
+}
+
+/** Сколько монет спишет назначение специализации spec для KAM (0 — уже оплачено или бесплатная смена в R1.3). */
+export function specCharge(phase: Phase, trainings: SpecTraining[], kam: number, spec: Specialization, s: GameSettings): number {
+  if (trainings.some((t) => t.kam === kam && t.specialization === spec)) return 0;
+  if (FREE_SPEC_PHASES.includes(phase) && trainings.some((t) => t.kam === kam && !t.locked)) return 0;
+  return s.cost_spec;
 }
 
 function limitViolations(st: TeamState) {
@@ -121,7 +132,7 @@ function limitViolations(st: TeamState) {
   for (let n = 1; n <= s.ssm_count; n += 1) {
     if (placements.filter((p) => p.ssm === n).length > s.ssm_max_clients) overSsm.push(`SSM ${n}`);
   }
-  const spend = spendOf(st.purchases, st.kams, s);
+  const spend = spendOf(st.purchases, st.trainings, s);
   const overBudget =
     spend.total > s.budget || (['info', 'marketing', 'hq'] as const).some((c) => spend.byCategory[c] > categoryCap(s, c));
   return { overKam, overSsm, overBudget, spend };

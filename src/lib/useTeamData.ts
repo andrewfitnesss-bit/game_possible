@@ -13,6 +13,7 @@ import type {
   Placement,
   Profile,
   Purchase,
+  SpecTraining,
   Team,
   TeamKam,
 } from './types';
@@ -27,6 +28,7 @@ export interface TeamData {
   hints: ClientHint[];
   placements: Placement[];
   kams: TeamKam[];
+  trainings: SpecTraining[];
   purchases: Purchase[];
   hqRequests: HqRequest[];
   meetings: MeetingResult[];
@@ -38,6 +40,7 @@ export function teamState(d: TeamData): TeamState {
     catalog: d.catalog,
     placements: d.placements,
     kams: d.kams,
+    trainings: d.trainings,
     purchases: d.purchases,
     meetings: d.meetings,
     members: d.members,
@@ -45,7 +48,7 @@ export function teamState(d: TeamData): TeamState {
   };
 }
 
-const TEAM_TABLES = ['placements', 'team_kams', 'purchases', 'hq_requests', 'meeting_results', 'profiles'] as const;
+const TEAM_TABLES = ['placements', 'team_kams', 'spec_trainings', 'purchases', 'hq_requests', 'meeting_results', 'profiles'] as const;
 
 // Полное состояние стола. Данных немного, поэтому при любом изменении перечитываем всё целиком.
 export function useTeamData(teamId: string | null) {
@@ -62,7 +65,7 @@ export function useTeamData(teamId: string | null) {
       if (t.error) throw t.error;
       if (!t.data) throw new Error('Команда не найдена');
       const team = t.data as Team;
-      const [g, members, clients, catalog, secrets, hints, placements, kams, purchases, hq, meetings] =
+      const [g, members, clients, catalog, secrets, hints, placements, kams, trainings, purchases, hq, meetings] =
         await Promise.all([
           supabase.from('games').select('*').eq('id', team.game_id).single(),
           supabase.from('profiles').select('*').eq('team_id', teamId).order('full_name'),
@@ -72,11 +75,12 @@ export function useTeamData(teamId: string | null) {
           supabase.from('client_hints').select('*'),
           supabase.from('placements').select('*').eq('team_id', teamId),
           supabase.from('team_kams').select('*').eq('team_id', teamId),
+          supabase.from('spec_trainings').select('*').eq('team_id', teamId),
           supabase.from('purchases').select('*').eq('team_id', teamId).order('id', { ascending: false }),
           supabase.from('hq_requests').select('*').eq('team_id', teamId).order('id'),
           supabase.from('meeting_results').select('*').eq('team_id', teamId),
         ]);
-      const failed = [g, members, clients, catalog, secrets, hints, placements, kams, purchases, hq, meetings].find(
+      const failed = [g, members, clients, catalog, secrets, hints, placements, kams, trainings, purchases, hq, meetings].find(
         (r) => r.error,
       );
       if (failed?.error) throw failed.error;
@@ -92,6 +96,7 @@ export function useTeamData(teamId: string | null) {
         hints: (hints.data ?? []) as ClientHint[],
         placements: (placements.data ?? []) as Placement[],
         kams: (kams.data ?? []) as TeamKam[],
+        trainings: (trainings.data ?? []) as SpecTraining[],
         purchases: (purchases.data ?? []) as Purchase[],
         hqRequests: (hq.data ?? []) as HqRequest[],
         meetings: (meetings.data ?? []) as MeetingResult[],

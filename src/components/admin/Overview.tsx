@@ -5,7 +5,7 @@ import { settingsOf, spendOf, stageProgress, type StageProgress } from '../../li
 import { errText } from '../../lib/errors';
 import { supabase } from '../../lib/supabase';
 import { verticalStyle } from '../../lib/verticals';
-import type { Client, Game, HqRequest, MeetingResult, Placement, Profile, Purchase, Team, TeamKam } from '../../lib/types';
+import type { Client, Game, HqRequest, MeetingResult, Placement, Profile, Purchase, SpecTraining, Team, TeamKam } from '../../lib/types';
 import { Empty, money } from '../../ui/kit';
 
 interface AllData {
@@ -13,12 +13,13 @@ interface AllData {
   members: Profile[];
   placements: Placement[];
   kams: TeamKam[];
+  trainings: SpecTraining[];
   purchases: Purchase[];
   meetings: MeetingResult[];
   requests: HqRequest[];
 }
 
-const LIVE_TABLES = ['placements', 'team_kams', 'purchases', 'meeting_results', 'hq_requests', 'profiles'] as const;
+const LIVE_TABLES = ['placements', 'team_kams', 'spec_trainings', 'purchases', 'meeting_results', 'hq_requests', 'profiles'] as const;
 
 // Сводка по всем столам: прогресс текущего этапа (кто отстаёт), состояние и запросы к HQ.
 export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
@@ -30,19 +31,20 @@ export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
   const load = useCallback(async () => {
     const ids = teams.map((x) => x.id);
     if (ids.length === 0) {
-      setData({ clients: [], members: [], placements: [], kams: [], purchases: [], meetings: [], requests: [] });
+      setData({ clients: [], members: [], placements: [], kams: [], trainings: [], purchases: [], meetings: [], requests: [] });
       return;
     }
-    const [c, pr, p, k, pu, m, r] = await Promise.all([
+    const [c, pr, p, k, st, pu, m, r] = await Promise.all([
       supabase.from('clients').select('*'),
       supabase.from('profiles').select('*').in('team_id', ids),
       supabase.from('placements').select('*').in('team_id', ids),
       supabase.from('team_kams').select('*').in('team_id', ids),
+      supabase.from('spec_trainings').select('*').in('team_id', ids),
       supabase.from('purchases').select('*').in('team_id', ids),
       supabase.from('meeting_results').select('*').in('team_id', ids),
       supabase.from('hq_requests').select('*').in('team_id', ids).order('title'),
     ]);
-    const failed = [c, pr, p, k, pu, m, r].find((x) => x.error);
+    const failed = [c, pr, p, k, st, pu, m, r].find((x) => x.error);
     if (failed?.error) {
       setError(errText(failed.error, t));
       return;
@@ -53,6 +55,7 @@ export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
       members: (pr.data ?? []) as Profile[],
       placements: (p.data ?? []) as Placement[],
       kams: (k.data ?? []) as TeamKam[],
+      trainings: (st.data ?? []) as SpecTraining[],
       purchases: (pu.data ?? []) as Purchase[],
       meetings: (m.data ?? []) as MeetingResult[],
       requests: (r.data ?? []) as HqRequest[],
@@ -87,6 +90,7 @@ export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
         catalog: [],
         placements: of(data.placements),
         kams: of(data.kams),
+        trainings: of(data.trainings),
         purchases: of(data.purchases),
         meetings: of(data.meetings),
         members: of(data.members),
@@ -198,7 +202,7 @@ export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
                     <td>{state.placements.filter((x) => x.bucket === 'midmarket').length}</td>
                     <td>{state.kams.filter((x) => x.specialization).length}</td>
                     <td>
-                      {spendOf(state.purchases, state.kams, settings).total} / {settings.budget}
+                      {spendOf(state.purchases, state.trainings, settings).total} / {settings.budget}
                     </td>
                     <td>{money(state.meetings.reduce((s, x) => s + x.amount, 0))}</td>
                     <td>

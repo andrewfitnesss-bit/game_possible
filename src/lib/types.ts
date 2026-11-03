@@ -110,6 +110,15 @@ export interface TeamKam {
   specialization: Specialization | null;
 }
 
+export interface SpecTraining {
+  id: number;
+  team_id: string;
+  kam: number;
+  specialization: Specialization;
+  /** true — обучение оплачено окончательно (после Round 1.3), сменить можно только за новые монеты. */
+  locked: boolean;
+}
+
 export type PurchaseStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 
 export interface Purchase {
