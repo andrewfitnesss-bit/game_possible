@@ -100,8 +100,10 @@ function UserMenu() {
 function GameStatus({ game }: { game: Game }) {
   const { t } = usePrefs();
   const [pinned, setPinned] = useState(false);
-  const left = useCountdown(game.phase_ends_at);
-  const index = PHASES.findIndex((p) => p.id === game.phase);
+  // У завершённой игры (её сменила новая) нет ни раунда, ни таймера.
+  const phase = game.is_active ? game.phase : 'finished';
+  const left = useCountdown(game.is_active ? game.phase_ends_at : null);
+  const index = PHASES.findIndex((p) => p.id === phase);
   const s = settingsOf(game);
   const vars = {
     kams: s.kams,
@@ -109,7 +111,7 @@ function GameStatus({ game }: { game: Game }) {
     budget: s.budget,
     active: s.max_active_per_kam,
     maint: s.max_maint_per_kam,
-    cap: game.phase === 'r1p2' ? s.cap_info : game.phase === 'r2p1' ? s.cap_marketing : s.cap_hq,
+    cap: phase === 'r1p2' ? s.cap_info : phase === 'r2p1' ? s.cap_marketing : s.cap_hq,
     cost: s.cost_spec,
     max: s.max_specs,
     ssmMax: s.ssm_max_clients,
@@ -132,7 +134,7 @@ function GameStatus({ game }: { game: Game }) {
         onClick={() => setPinned((v) => !v)}
       >
         <span className="phase-step">{index > 0 && index <= PLAYABLE_PHASES ? t('shell.stage', { n: index, total: PLAYABLE_PHASES }) : game.name}</span>
-        <span className="phase-name">{t(`phaseShort.${game.phase}` as TKey)}</span>
+        <span className="phase-name">{t(`phaseShort.${phase}` as TKey)}</span>
         <Info size={15} className="phase-info" />
         {left !== null &&
           (left > 0 ? (
@@ -147,11 +149,11 @@ function GameStatus({ game }: { game: Game }) {
       <div className="rules-pop" id="round-rules" role="tooltip">
         <div className="rules-head">
           <span className="section-title">{t('rules.title')}</span>
-          <strong>{t(`phase.${game.phase}` as TKey)}</strong>
+          <strong>{t(`phase.${phase}` as TKey)}</strong>
         </div>
         <div className="rules-goal">
           <Target size={16} />
-          <span>{t(`rules.${game.phase}.goal` as TKey)}</span>
+          <span>{t(`rules.${phase}.goal` as TKey)}</span>
         </div>
         <span className="section-title">{t('rules.limits')}</span>
         <ul>

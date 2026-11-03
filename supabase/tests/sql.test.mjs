@@ -214,8 +214,12 @@ check('reseat: curator stays curator', curReseat.role === 'curator' && curReseat
 await expectOk('empty game', admin, `select public.start_game('Game 4', 'empty')`);
 const stuck = (await db.query(`select count(*)::int as n from profiles p join games g on g.id = p.game_id where not g.is_active`)).rows[0].n;
 check('empty: players stay in the old game', stuck >= 4, stuck);
+await expectOk('player leaves finished game', mem, `select public.leave_finished_game()`);
+const memRow = (await db.query(`select p.team_id, g.is_active from profiles p join games g on g.id = p.game_id where p.id = $1`, [mem])).rows[0];
+check('left player waits in the active game', memRow?.is_active === true && memRow.team_id === null, JSON.stringify(memRow));
+await expectErr('cannot leave an active game', mem, `select public.leave_finished_game()`, [], 'E_GAME_ACTIVE');
 const adopted = (await expectOk('adopt players', admin, `select public.adopt_players() as n`)).rows[0].n;
-check('adopt moves everyone', adopted >= 4 && (await db.query(`select count(*)::int as n from profiles p join games g on g.id = p.game_id where not g.is_active`)).rows[0].n === 0, adopted);
+check('adopt moves everyone', adopted >= 3 && (await db.query(`select count(*)::int as n from profiles p join games g on g.id = p.game_id where not g.is_active`)).rows[0].n === 0, adopted);
 
 console.log(failures ? `\n${failures} FAILED` : '\nALL PASSED');
 process.exit(failures ? 1 : 0);

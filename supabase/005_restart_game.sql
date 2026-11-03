@@ -28,11 +28,13 @@ begin
       insert into public.teams (game_id, name) values (v_id, r.name) returning id into v_team;
       update public.profiles set game_id = v_id, team_id = v_team where team_id = r.id and role <> 'superadmin';
     end loop;
-    update public.profiles set game_id = v_id, team_id = null where game_id = v_old and role <> 'superadmin';
-  elsif v_old is not null and p_mode = 'reseat' then
+    update public.profiles set game_id = v_id, team_id = null
+      where (game_id = v_old or game_id is null) and role <> 'superadmin';
+  elsif p_mode = 'reseat' then
+    -- Игроки прошлой игры и те, кто уже вышел из завершённой игры и ждёт.
     update public.profiles
       set game_id = v_id, team_id = null, role = case when role = 'captain' then 'member' else role end
-      where game_id = v_old and role <> 'superadmin';
+      where (game_id = v_old or game_id is null) and role <> 'superadmin';
   end if;
 
   select count(*) into v_moved from public.profiles where game_id = v_id;
@@ -74,6 +76,26 @@ begin
   return v_count;
 end $$;
 
+-- Игрок сам выходит из завершённой игры и ждёт распределения в новую (или в текущую, если она уже идёт).
+create or replace function public.leave_finished_game()
+returns void language plpgsql security definer set search_path = public as $$
+declare
+  v_game uuid;
+  v_active uuid;
+begin
+  if auth.uid() is null then raise exception 'E_NO_RIGHTS'; end if;
+  select game_id into v_game from public.profiles where id = auth.uid() and role <> 'superadmin';
+  if v_game is not null and exists (select 1 from public.games where id = v_game and is_active) then
+    raise exception 'E_GAME_ACTIVE';
+  end if;
+  select id into v_active from public.games where is_active;
+  update public.profiles
+    set game_id = v_active, team_id = null, role = case when role = 'captain' then 'member' else role end
+    where id = auth.uid() and role <> 'superadmin';
+end $$;
+
+revoke all on function public.leave_finished_game() from public, anon;
+grant execute on function public.leave_finished_game() to authenticated;
 revoke all on function public.start_game(text, text) from public, anon;
 revoke all on function public.adopt_players() from public, anon;
 grant execute on function public.start_game(text, text) to authenticated;

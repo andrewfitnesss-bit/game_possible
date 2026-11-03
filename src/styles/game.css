@@ -400,3 +400,4 @@ fieldset.plain legend { padding: 0; margin-bottom: 10px; }
 .mode-option.on { border-color: var(--primary); background: var(--primary-soft); }
 .mode-option.on svg { color: var(--primary-text); }
 .callout.stuck { align-items: center; }
+.waiting .center-row { justify-content: center; }
