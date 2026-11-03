@@ -1,26 +1,25 @@
+import type { TKey, TVars } from '../i18n/prefs';
 import type {
   CatalogItem,
   Category,
   Client,
   Game,
   GameSettings,
-  MeetingOutcome,
+  MeetingResult,
   Phase,
   Placement,
+  Profile,
   Purchase,
   Specialization,
   TeamKam,
 } from './types';
 
-// Значения по умолчанию совпадают с public.gs() в supabase/002_nal_game.sql.
+// Значения по умолчанию совпадают с public.gs() в supabase/003_budget_specs_prefs.sql.
 export const DEFAULT_SETTINGS: GameSettings = {
   budget: 80,
   cap_info: 10,
   cap_marketing: 20,
   cap_hq: 25,
-  capacity: 170,
-  cost_active: 10,
-  cost_maintenance: 2.5,
   cost_spec: 8,
   kams: 4,
   max_active_per_kam: 4,
@@ -31,53 +30,30 @@ export const DEFAULT_SETTINGS: GameSettings = {
   max_hq_requests: 3,
 };
 
-export const SETTING_LABEL: Record<keyof GameSettings, string> = {
-  budget: 'Общий бюджет, монет',
-  cap_info: 'Лимит: информация',
-  cap_marketing: 'Лимит: маркетинг',
-  cap_hq: 'Лимит: HQ',
-  capacity: 'Sales Capacity',
-  cost_active: 'Capacity за Active',
-  cost_maintenance: 'Capacity за Maintenance',
-  cost_spec: 'Capacity за специализацию',
-  kams: 'Число KAM',
-  max_active_per_kam: 'Active на KAM, максимум',
-  max_maint_per_kam: 'Maintenance на KAM, максимум',
-  ssm_count: 'Число SSM',
-  ssm_max_clients: 'Клиентов на SSM, максимум',
-  max_specs: 'Специализаций на команду',
-  max_hq_requests: 'Запросов к HQ на команду',
-};
-
 export function settingsOf(game: Game | null): GameSettings {
   return { ...DEFAULT_SETTINGS, ...(game?.settings ?? {}) };
 }
 
 export interface PhaseDef {
   id: Phase;
-  label: string;
-  short: string;
   minutes: number;
-  /** Что происходит в раунде — подсказка для ведущей и игроков. */
-  about: string;
 }
 
 export const PHASES: PhaseDef[] = [
-  { id: 'lobby', label: 'Ожидание старта', short: 'Ожидание старта', minutes: 0, about: 'Команды собираются, капитаны назначены.' },
-  { id: 'r1p1', label: 'Round 1.1 — Build the Initial NAL', short: 'R1.1 · Build the NAL', minutes: 15, about: 'Распределить клиентов между KAM, Maintenance и MidMarket.' },
-  { id: 'r1p2', label: 'Round 1.2 — Доп. информация о клиентах', short: 'R1.2 · Доп. информация', minutes: 15, about: 'Покупка Hint 1 и Hint 2, до 10 монет.' },
-  { id: 'r1p3', label: 'Round 1.3 — Specialization и пересортировка', short: 'R1.3 · Специализации', minutes: 20, about: 'Специализации KAM, SSM, пересортировка.' },
-  { id: 'r2p1', label: 'Round 2.1 — Local Marketing Investment Board', short: 'R2.1 · Маркетинг', minutes: 20, about: 'Маркетинговые активности, до 20 монет.' },
-  { id: 'r2p2', label: 'Round 2.2 — HQ Capability Investment Board', short: 'R2.2 · HQ', minutes: 20, about: 'Помощь HQ и запросы вне каталога, до 25 монет.' },
-  { id: 'r3', label: 'Round 3 — Встречи с клиентом', short: 'R3 · Встречи', minutes: 90, about: 'Куратор играет клиента и фиксирует результат.' },
-  { id: 'r4', label: 'Round 4 — Финальная корректировка', short: 'R4 · Финал', minutes: 20, about: 'Финальная раскладка, подготовка защиты.' },
-  { id: 'r5', label: 'Round 5 — Защита стратегии', short: 'R5 · Защита', minutes: 70, about: '5 минут презентации и 3 минуты вопросов.' },
-  { id: 'finished', label: 'Игра завершена', short: 'Игра завершена', minutes: 0, about: 'Подсчёт и награждение.' },
+  { id: 'lobby', minutes: 0 },
+  { id: 'r1p1', minutes: 15 },
+  { id: 'r1p2', minutes: 15 },
+  { id: 'r1p3', minutes: 20 },
+  { id: 'r2p1', minutes: 20 },
+  { id: 'r2p2', minutes: 20 },
+  { id: 'r3', minutes: 90 },
+  { id: 'r4', minutes: 20 },
+  { id: 'r5', minutes: 70 },
+  { id: 'finished', minutes: 0 },
 ];
 
-export function phaseLabel(phase: Phase): string {
-  return PHASES.find((p) => p.id === phase)?.label ?? phase;
-}
+/** Раунды с игровыми действиями (без «ожидания» и «завершена»). */
+export const PLAYABLE_PHASES = PHASES.length - 2;
 
 // Что капитан может делать в раунде. Куратор и админ не ограничены. Сервер проверяет то же самое.
 export const BOARD_PHASES: Phase[] = ['r1p1', 'r1p2', 'r1p3', 'r2p1', 'r2p2', 'r3', 'r4'];
@@ -89,51 +65,20 @@ export const PURCHASE_PHASES: Record<Category, Phase[]> = {
 };
 export const HQ_REQUEST_PHASES: Phase[] = ['r2p2'];
 
-export const CATEGORY_LABEL: Record<Category, string> = {
-  info: 'Информация',
-  marketing: 'Маркетинг',
-  hq: 'HQ',
-};
-
-export const SPEC_LABEL: Record<Specialization, string> = {
-  government: 'Government',
-  industrial: 'Industrial / OT',
-  finance: 'Finance / Banking',
-  telecom: 'Telecom',
-  other_enterprise: 'Other Enterprise (TI)',
-};
-
-export const OUTCOME_LABEL: Record<MeetingOutcome, string> = {
-  no_progress: 'No Progress',
-  qualified: 'Qualified Opportunity',
-  strategic: 'Strategic Access',
-};
-
-export const STATUS_LABEL = {
-  pending: 'Ждёт куратора',
-  approved: 'Проведена',
-  rejected: 'Отклонена',
-  cancelled: 'Отменена',
-} as const;
-
-export function capacityUsed(placements: Placement[], kams: TeamKam[], s: GameSettings): number {
-  let used = 0;
-  for (const p of placements) {
-    if (p.bucket === 'active') used += s.cost_active;
-    else if (p.bucket === 'maintenance') used += s.cost_maintenance;
-  }
-  return used + kams.filter((k) => k.specialization).length * s.cost_spec;
-}
+export const SPECIALIZATIONS: Specialization[] = ['government', 'industrial', 'finance', 'telecom', 'other_enterprise'];
 
 export interface Spend {
   total: number;
+  specs: number;
   byCategory: Record<Category, number>;
 }
 
-export function spendOf(purchases: Purchase[]): Spend {
+/** Потрачено командой: проведённые покупки плюс обучение KAM (как public.team_spent). */
+export function spendOf(purchases: Purchase[], kams: TeamKam[], s: GameSettings): Spend {
   const byCategory: Record<Category, number> = { info: 0, marketing: 0, hq: 0 };
   for (const p of purchases) if (p.status === 'approved') byCategory[p.category] += p.cost;
-  return { total: byCategory.info + byCategory.marketing + byCategory.hq, byCategory };
+  const specs = kams.filter((k) => k.specialization).length * s.cost_spec;
+  return { total: byCategory.info + byCategory.marketing + byCategory.hq + specs, specs, byCategory };
 }
 
 export function categoryCap(s: GameSettings, c: Category): number {
@@ -147,30 +92,25 @@ export function hasApproved(purchases: Purchase[], item: string, client?: string
 }
 
 export interface Check {
-  label: string;
+  label: TKey;
+  vars?: TVars;
   ok: boolean;
-  detail?: string;
+  detail?: { key: TKey; vars?: TVars };
 }
 
-// Контрольные точки из инструкции кураторов.
-export function checkpoints(input: {
+export interface TeamState {
   clients: Client[];
   catalog: CatalogItem[];
   placements: Placement[];
   kams: TeamKam[];
   purchases: Purchase[];
-  meetings: number;
+  meetings: MeetingResult[];
+  members: Profile[];
   settings: GameSettings;
-}): { title: string; checks: Check[] }[] {
-  const { clients, catalog, placements, kams, purchases, meetings, settings: s } = input;
-  const inGame = clients.filter((c) => c.in_game);
-  const placed = new Set(placements.map((p) => p.client_code));
-  const missing = inGame.filter((c) => !placed.has(c.code)).map((c) => c.code);
-  const used = capacityUsed(placements, kams, s);
-  const spend = spendOf(purchases);
-  const pending = purchases.filter((p) => p.status === 'pending').length;
-  const specs = kams.filter((k) => k.specialization).length;
+}
 
+function limitViolations(st: TeamState) {
+  const { placements, settings: s } = st;
   const overKam: string[] = [];
   for (let k = 1; k <= s.kams; k += 1) {
     const active = placements.filter((p) => p.kam === k && p.bucket === 'active').length;
@@ -181,50 +121,137 @@ export function checkpoints(input: {
   for (let n = 1; n <= s.ssm_count; n += 1) {
     if (placements.filter((p) => p.ssm === n).length > s.ssm_max_clients) overSsm.push(`SSM ${n}`);
   }
-  const overCat = (['info', 'marketing', 'hq'] as const).filter((c) => spend.byCategory[c] > categoryCap(s, c));
+  const spend = spendOf(st.purchases, st.kams, s);
+  const overBudget =
+    spend.total > s.budget || (['info', 'marketing', 'hq'] as const).some((c) => spend.byCategory[c] > categoryCap(s, c));
+  return { overKam, overSsm, overBudget, spend };
+}
+
+export function unplacedClients(clients: Client[], placements: Placement[]): Client[] {
+  const placed = new Set(placements.map((p) => p.client_code));
+  return clients.filter((c) => c.in_game && !placed.has(c.code));
+}
+
+// Контрольные точки из инструкции кураторов.
+export function checkpoints(st: TeamState): { title: TKey; checks: Check[] }[] {
+  const { clients, catalog, kams, purchases, meetings, settings: s } = st;
+  const inGame = clients.filter((c) => c.in_game);
+  const missing = unplacedClients(clients, st.placements).map((c) => c.code);
+  const specs = kams.filter((k) => k.specialization).length;
+  const { overKam, overSsm, overBudget, spend } = limitViolations(st);
   const needsTargets = new Set(catalog.filter((i) => i.category !== 'info' && i.max_targets > 0).map((i) => i.code));
   const untargeted = purchases.filter((p) => p.status === 'approved' && needsTargets.has(p.item) && !p.targets.length);
 
   return [
     {
-      title: 'После раунда 1',
+      title: 'check.r1',
       checks: [
         {
-          label: 'Все клиенты распределены',
+          label: 'check.allPlaced',
           ok: missing.length === 0,
-          detail: missing.length ? `Не распределены: ${missing.join(', ')}` : undefined,
+          detail: missing.length ? { key: 'check.notPlaced', vars: { list: missing.join(', ') } } : undefined,
         },
-        { label: 'Специализации проверены', ok: true, detail: specs ? `Выбрано: ${specs}` : 'Специализаций нет' },
+        {
+          label: 'check.specs',
+          ok: true,
+          detail: specs ? { key: 'check.specsChosen', vars: { n: specs } } : { key: 'check.specsNone' },
+        },
       ],
     },
     {
-      title: 'После раунда 2',
+      title: 'check.r2',
       checks: [
-        { label: 'Нет необработанных заявок', ok: pending === 0, detail: pending ? `Ждут решения: ${pending}` : undefined },
         {
-          label: 'У адресных покупок указаны клиенты',
+          label: 'check.targeted',
           ok: untargeted.length === 0,
-          detail: untargeted.length ? untargeted.map((p) => `#${p.id} ${p.item}`).join(', ') : undefined,
+          detail: untargeted.length
+            ? { key: 'check.notPlaced', vars: { list: untargeted.map((p) => `#${p.id} ${p.item}`).join(', ') } }
+            : undefined,
         },
       ],
     },
     {
-      title: 'После раунда 3',
-      checks: [{ label: 'Результат встречи зафиксирован', ok: meetings > 0, detail: `Записей: ${meetings}` }],
+      title: 'check.r3',
+      checks: [{ label: 'check.meeting', ok: meetings.length > 0, detail: { key: 'check.records', vars: { n: meetings.length } } }],
     },
     {
-      title: 'После раунда 4',
+      title: 'check.r4',
       checks: [
-        { label: `${inGame.length} уникальных итоговых записей`, ok: missing.length === 0 },
-        { label: 'Sales Capacity соблюдена', ok: used <= s.capacity, detail: `${used} из ${s.capacity}` },
-        { label: 'Лимиты KAM соблюдены', ok: overKam.length === 0, detail: overKam.join(', ') || undefined },
-        { label: 'Лимиты SSM соблюдены', ok: overSsm.length === 0, detail: overSsm.join(', ') || undefined },
+        { label: 'check.unique', vars: { n: inGame.length }, ok: missing.length === 0 },
+        { label: 'check.kamLimits', ok: overKam.length === 0 },
+        { label: 'check.ssmLimits', ok: overSsm.length === 0 },
         {
-          label: 'Бюджет соблюдён',
-          ok: spend.total <= s.budget && overCat.length === 0,
-          detail: `${spend.total} из ${s.budget} монет`,
+          label: 'check.budget',
+          ok: !overBudget,
+          detail: { key: 'check.budgetDetail', vars: { spent: spend.total, budget: s.budget } },
         },
       ],
     },
   ];
+}
+
+export interface ProgressStep {
+  label: TKey;
+  vars?: TVars;
+  /** Доля выполнения шага от 0 до 1. */
+  value: number;
+}
+
+export interface StageProgress {
+  percent: number;
+  steps: ProgressStep[];
+}
+
+// Прогресс текущего этапа стола — ведущая видит, кто отстаёт, а команда — что осталось сделать.
+export function stageProgress(phase: Phase, st: TeamState): StageProgress {
+  const s = st.settings;
+  const inGame = st.clients.filter((c) => c.in_game).length;
+  const placed = inGame - unplacedClients(st.clients, st.placements).length;
+  const { overKam, overSsm, overBudget, spend } = limitViolations(st);
+  const ssmSlots = s.ssm_count * s.ssm_max_clients;
+  const ssmUsed = st.placements.filter((p) => p.ssm).length;
+  const ratio = (a: number, b: number) => (b > 0 ? Math.min(a / b, 1) : 1);
+
+  const placedStep: ProgressStep = { label: 'progress.placed', vars: { done: placed, total: inGame }, value: ratio(placed, inGame) };
+  const budgetStep = (c: Category, label: TKey): ProgressStep => ({
+    label,
+    vars: { done: spend.byCategory[c], total: categoryCap(s, c) },
+    value: ratio(spend.byCategory[c], categoryCap(s, c)),
+  });
+
+  let steps: ProgressStep[];
+  switch (phase) {
+    case 'lobby':
+      steps = [{ label: 'progress.captain', value: st.members.some((m) => m.role === 'captain') ? 1 : 0 }];
+      break;
+    case 'r1p1':
+      steps = [placedStep];
+      break;
+    case 'r1p2':
+      steps = [placedStep, budgetStep('info', 'progress.hints')];
+      break;
+    case 'r1p3':
+      steps = [
+        placedStep,
+        { label: 'progress.ssm', vars: { done: ssmUsed, total: ssmSlots }, value: ratio(ssmUsed, ssmSlots) },
+        { label: 'progress.specs', value: st.kams.some((k) => k.specialization) ? 1 : 0 },
+      ];
+      break;
+    case 'r2p1':
+      steps = [budgetStep('marketing', 'progress.marketing')];
+      break;
+    case 'r2p2':
+      steps = [budgetStep('hq', 'progress.hq')];
+      break;
+    case 'r3':
+      steps = [{ label: 'progress.meetings', vars: { done: st.meetings.length }, value: st.meetings.length > 0 ? 1 : 0 }];
+      break;
+    case 'r4':
+      steps = [placedStep, { label: 'progress.limits', value: !overKam.length && !overSsm.length && !overBudget ? 1 : 0 }];
+      break;
+    default:
+      steps = [{ label: 'progress.defense', value: 1 }];
+  }
+  const percent = Math.round((steps.reduce((sum, x) => sum + x.value, 0) / steps.length) * 100);
+  return { percent, steps };
 }

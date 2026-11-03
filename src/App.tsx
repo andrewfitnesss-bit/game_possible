@@ -1,6 +1,7 @@
 import { CircleAlert } from 'lucide-react';
 import { useAuth } from './auth';
 import { AppShell } from './components/layout/AppShell';
+import { useT } from './i18n/prefs';
 import { AdminPage } from './pages/AdminPage';
 import { CuratorPage } from './pages/CuratorPage';
 import { LoginPage } from './pages/LoginPage';
@@ -10,6 +11,7 @@ import { Loading } from './ui/kit';
 
 function Screen() {
   const { profile, signOut } = useAuth();
+  const t = useT();
 
   if (!profile) {
     return (
@@ -17,10 +19,10 @@ function Screen() {
         <div className="waiting-icon">
           <CircleAlert />
         </div>
-        <h2>Профиль не найден</h2>
-        <p className="muted">Аккаунт есть, но профиль не создан. Проверьте, что SQL-схема применена в Supabase.</p>
+        <h2>{t('app.profileMissingTitle')}</h2>
+        <p className="muted">{t('app.profileMissingText')}</p>
         <button className="btn btn-secondary" onClick={() => void signOut()}>
-          Выйти
+          {t('shell.logout')}
         </button>
       </div>
     );
@@ -34,7 +36,8 @@ function Screen() {
 
 export function App() {
   const { session, loading } = useAuth();
-  if (loading) return <Loading />;
+  const t = useT();
+  if (loading) return <Loading text={t('common.loading')} />;
   if (!session) return <LoginPage />;
   return (
     <AppShell>

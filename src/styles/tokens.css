@@ -66,36 +66,112 @@
   --font-display: 'Oswald', 'Inter', system-ui, sans-serif;
 
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* Производные цвета бренда */
+  --gold-soft: rgba(242, 169, 59, 0.16);
+  --gold-line: rgba(242, 169, 59, 0.3);
+  --gold-text: #a8620a;
+  --primary-shadow: rgba(232, 89, 12, 0.22);
+  --display-case: uppercase;
+  --display-spacing: 0.04em;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --bg: #12100e;
-    --surface: #1b1815;
-    --surface-2: #211d19;
-    --sunken: #15120f;
-    --border: #2f2923;
-    --border-strong: #41382f;
-    --text: #f3ece3;
-    --text-2: #cfc4b6;
-    --muted: #93877a;
-    --primary: #ff7a2f;
-    --primary-hover: #ff8d4d;
-    --primary-soft: #3a2214;
-    --primary-text: #ffad7a;
-    --on-primary: #1a0f07;
-    --success: #69db7c;
-    --success-soft: #16301c;
-    --danger: #ff8fab;
-    --danger-strong: #ff6b6b;
-    --danger-soft: #3a1820;
-    --warning: #ffc078;
-    --warning-soft: #3a2a12;
-    --info: #74c0fc;
-    --info-soft: #132a3d;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
-    --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.55);
-  }
+/* ---------- Арена: тёмный режим ---------- */
+:root[data-mode='dark'] {
+  color-scheme: dark;
+  --bg: #12100e;
+  --surface: #1b1815;
+  --surface-2: #211d19;
+  --sunken: #15120f;
+  --border: #2f2923;
+  --border-strong: #41382f;
+  --text: #f3ece3;
+  --text-2: #cfc4b6;
+  --muted: #93877a;
+  --primary: #ff7a2f;
+  --primary-hover: #ff8d4d;
+  --primary-soft: #3a2214;
+  --primary-text: #ffad7a;
+  --on-primary: #1a0f07;
+  --success: #69db7c;
+  --success-soft: #16301c;
+  --danger: #ff8fab;
+  --danger-strong: #ff6b6b;
+  --danger-soft: #3a1820;
+  --warning: #ffc078;
+  --warning-soft: #3a2a12;
+  --info: #74c0fc;
+  --info-soft: #132a3d;
+  --gold-text: #ffcf6e;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 18px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 14px 36px rgba(0, 0, 0, 0.55);
+}
+
+/* ---------- Корпоративная B2B-тема: графит и бирюза, строгая типографика ---------- */
+:root[data-theme='corp'] {
+  --ink: #1d2327;
+  --ink-2: #252d32;
+  --ink-3: #2f383e;
+  --ink-text: #ffffff;
+  --ink-muted: #a3afb6;
+  --gold: #00a88e;
+  --gold-2: #4fd1b8;
+  --ember: #00a88e;
+  --ember-2: #2bc4a8;
+
+  --bg: #f2f4f5;
+  --surface: #ffffff;
+  --surface-2: #f7f9fa;
+  --sunken: #e9edef;
+  --border: #dde3e6;
+  --border-strong: #c4ced3;
+  --text: #1d2327;
+  --text-2: #46525a;
+  --muted: #76838b;
+
+  --primary: #00a88e;
+  --primary-hover: #008f79;
+  --primary-soft: #e0f5f1;
+  --primary-text: #007a67;
+  --on-primary: #ffffff;
+  --focus: #00a88e;
+  --primary-shadow: rgba(0, 168, 142, 0.2);
+
+  --gold-soft: rgba(0, 168, 142, 0.12);
+  --gold-line: rgba(0, 168, 142, 0.35);
+  --gold-text: #007a67;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --shadow-sm: 0 1px 2px rgba(20, 30, 35, 0.06);
+  --shadow: 0 1px 3px rgba(20, 30, 35, 0.08), 0 4px 12px rgba(20, 30, 35, 0.05);
+  --shadow-lg: 0 12px 32px rgba(20, 30, 35, 0.16);
+  --font-display: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --display-case: none;
+  --display-spacing: -0.01em;
+}
+
+:root[data-theme='corp'][data-mode='dark'] {
+  --bg: #111517;
+  --surface: #191f22;
+  --surface-2: #1e2528;
+  --sunken: #0e1214;
+  --border: #2a3338;
+  --border-strong: #3a454b;
+  --text: #eef2f3;
+  --text-2: #c2ccd0;
+  --muted: #86939a;
+  --primary: #1fc7a8;
+  --primary-hover: #3fd4b8;
+  --primary-soft: #0f3029;
+  --primary-text: #5fe0c6;
+  --on-primary: #06231d;
+  --gold-text: #5fe0c6;
+  --ink: #0b0f11;
+  --ink-2: #12181b;
+  --ink-3: #1a2226;
 }

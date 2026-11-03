@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
-import { Flag, LayoutGrid, Rocket, ScrollText, Trophy, Users } from 'lucide-react';
+import { Activity, Flag, LayoutGrid, Rocket, ScrollText, Users } from 'lucide-react';
 import { AuditSection } from '../components/AuditSection';
 import { GameControl } from '../components/admin/GameControl';
 import { Overview } from '../components/admin/Overview';
 import { PeoplePanel } from '../components/admin/PeoplePanel';
 import { TeamWorkspace } from '../components/game/TeamWorkspace';
+import { useT } from '../i18n/prefs';
 import { errText } from '../lib/errors';
 import { supabase } from '../lib/supabase';
 import type { Game, Profile, Role, Team } from '../lib/types';
@@ -14,15 +15,8 @@ import { Empty, Tabs, type TabDef } from '../ui/kit';
 
 type Tab = 'people' | 'game' | 'tables' | 'overview' | 'audit';
 
-const TABS: TabDef<Tab>[] = [
-  { id: 'people', label: 'Участники', icon: <Users size={16} /> },
-  { id: 'game', label: 'Раунды и правила', icon: <Flag size={16} /> },
-  { id: 'tables', label: 'Столы', icon: <LayoutGrid size={16} /> },
-  { id: 'overview', label: 'Итоги', icon: <Trophy size={16} /> },
-  { id: 'audit', label: 'Аудит', icon: <ScrollText size={16} /> },
-];
-
 export function AdminPage() {
+  const t = useT();
   const toast = useToast();
   const ask = useConfirm();
   const [game, setGame] = useState<Game | null>(null);
@@ -32,12 +26,19 @@ export function AdminPage() {
   const [busy, setBusy] = useState(false);
   const [newGame, setNewGame] = useState('');
   const [tab, setTab] = useState<Tab>('people');
+  const TABS: TabDef<Tab>[] = [
+    { id: 'people', label: t('admin.tabPeople'), icon: <Users size={16} /> },
+    { id: 'game', label: t('admin.tabGame'), icon: <Flag size={16} /> },
+    { id: 'tables', label: t('admin.tabTables'), icon: <LayoutGrid size={16} /> },
+    { id: 'overview', label: t('admin.tabProgress'), icon: <Activity size={16} /> },
+    { id: 'audit', label: t('admin.tabAudit'), icon: <ScrollText size={16} /> },
+  ];
   const [tableId, setTableId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const g = await supabase.from('games').select('*').eq('is_active', true).maybeSingle();
     if (g.error) {
-      toast.error(errText(g.error));
+      toast.error(errText(g.error, t));
       return;
     }
     const activeGame = (g.data as Game | null) ?? null;
@@ -47,19 +48,19 @@ export function AdminPage() {
       setPeople([]);
       return;
     }
-    const [t, p] = await Promise.all([
+    const [tm, pr] = await Promise.all([
       supabase.from('teams').select('*').eq('game_id', activeGame.id).order('created_at'),
       supabase.from('profiles').select('*').eq('game_id', activeGame.id).neq('role', 'superadmin').order('full_name'),
     ]);
-    const firstError = t.error ?? p.error;
+    const firstError = tm.error ?? pr.error;
     if (firstError) {
-      toast.error(errText(firstError));
+      toast.error(errText(firstError, t));
       return;
     }
-    setTeams((t.data ?? []) as Team[]);
-    setPeople((p.data ?? []) as Profile[]);
+    setTeams((tm.data ?? []) as Team[]);
+    setPeople((pr.data ?? []) as Profile[]);
     setRefreshKey((k) => k + 1);
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     void load();
@@ -78,10 +79,10 @@ export function AdminPage() {
     setBusy(true);
     try {
       const { error } = await action();
-      if (error) toast.error(errText(error));
+      if (error) toast.error(errText(error, t));
       else if (success) toast.success(success);
     } catch (e) {
-      toast.error(errText(e));
+      toast.error(errText(e, t));
     } finally {
       await load();
       setBusy(false);
@@ -105,16 +106,14 @@ export function AdminPage() {
     const name = newGame.trim();
     if (!name) return;
     const ok = await ask({
-      title: game ? 'Начать новую игру?' : `Запустить игру «${name}»?`,
-      message: game
-        ? `Игра «${game.name}» будет завершена. Участники в новую игру не переносятся — в ней регистрируются заново.`
-        : 'Новые участники будут попадать в эту игру при регистрации.',
-      confirmLabel: 'Запустить',
+      title: game ? t('admin.newGameTitle') : t('admin.startTitle', { name }),
+      message: game ? t('admin.newGameText', { name: game.name }) : t('admin.startText'),
+      confirmLabel: t('admin.start'),
       danger: Boolean(game),
     });
     if (ok === null) return;
     setNewGame('');
-    void run(() => supabase.rpc('start_game', { p_name: name }), `Игра «${name}» запущена`);
+    void run(() => supabase.rpc('start_game', { p_name: name }), t('admin.started', { name }));
   }
 
   const selectedTable = teams.find((t) => t.id === tableId) ?? teams[0] ?? null;
@@ -124,30 +123,28 @@ export function AdminPage() {
       <section className="card admin-hero">
         <div className="card-head">
           <div>
-            <span className="section-title">Панель ведущей</span>
-            <h1 className="team-name">{game ? game.name : 'Игра не запущена'}</h1>
-            <div className="card-sub">
-              {game ? `${teams.length} столов · ${people.length} человек` : 'Создайте игру, чтобы участники могли регистрироваться.'}
-            </div>
+            <span className="section-title">{t('admin.panel')}</span>
+            <h1 className="team-name">{game ? game.name : t('admin.noGame')}</h1>
+            <div className="card-sub">{game ? t('admin.stats', { teams: teams.length, people: people.length }) : t('admin.createHint')}</div>
           </div>
           <form className="row" onSubmit={(e) => void startGame(e)}>
             <input
               className="input new-game-input"
               value={newGame}
               onChange={(e) => setNewGame(e.target.value)}
-              placeholder="Название новой игры"
+              placeholder={t('admin.newGamePh')}
               maxLength={100}
-              aria-label="Название новой игры"
+              aria-label={t('admin.newGamePh')}
             />
             <button type="submit" className={game ? 'btn btn-secondary' : 'btn btn-primary'} disabled={busy || !newGame.trim()}>
               <Rocket size={16} />
-              {game ? 'Новая игра' : 'Запустить'}
+              {game ? t('admin.newGame') : t('admin.start')}
             </button>
           </form>
         </div>
       </section>
 
-      <Tabs tabs={TABS} value={tab} onChange={setTab} label="Разделы админки" />
+      <Tabs tabs={TABS} value={tab} onChange={setTab} label={t('admin.sections')} />
 
       {tab === 'people' &&
         (game ? (
@@ -157,9 +154,9 @@ export function AdminPage() {
             busy={busy}
             onMove={movePerson}
             onRole={changeRole}
-            onAddTeam={(name) => void run(() => supabase.from('teams').insert({ game_id: game.id, name }), `Стол «${name}» добавлен`)}
-            onRemoveTeam={(t) => void run(() => supabase.from('teams').delete().eq('id', t.id), `Стол «${t.name}» удалён`)}
-            onSplit={() => void run(() => supabase.rpc('split_evenly'), 'Участники распределены поровну')}
+            onAddTeam={(name) => void run(() => supabase.from('teams').insert({ game_id: game.id, name }), t('admin.tableAdded', { name }))}
+            onRemoveTeam={(team) => void run(() => supabase.from('teams').delete().eq('id', team.id), t('admin.tableRemoved', { name: team.name }))}
+            onSplit={() => void run(() => supabase.rpc('split_evenly'), t('admin.splitDone'))}
           />
         ) : (
           <NoGame />
@@ -171,13 +168,13 @@ export function AdminPage() {
         (!game ? (
           <NoGame />
         ) : !selectedTable ? (
-          <Empty title="Столов пока нет">Создайте столы во вкладке «Участники».</Empty>
+          <Empty title={t('admin.noTables')}>{t('admin.noTablesText')}</Empty>
         ) : (
           <>
             <Tabs
               pills
-              label="Столы"
-              tabs={teams.map((t) => ({ id: t.id, label: t.name }))}
+              label={t('admin.tables')}
+              tabs={teams.map((team) => ({ id: team.id, label: team.name }))}
               value={selectedTable.id}
               onChange={setTableId}
             />
@@ -193,5 +190,6 @@ export function AdminPage() {
 }
 
 function NoGame() {
-  return <Empty title="Активной игры нет">Запустите игру в шапке панели.</Empty>;
+  const t = useT();
+  return <Empty title={t('admin.noGameTitle')}>{t('admin.noGameText')}</Empty>;
 }

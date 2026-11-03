@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Handshake, Trash2, Trophy } from 'lucide-react';
-import { OUTCOME_LABEL } from '../../lib/game';
+import { useT, type TKey } from '../../i18n/prefs';
 import { verticalStyle } from '../../lib/verticals';
 import type { Client, MeetingOutcome, MeetingResult } from '../../lib/types';
 import { useConfirm } from '../../ui/Confirm';
@@ -15,6 +15,7 @@ interface Props {
   actions: WorkspaceActions;
 }
 
+const OUTCOMES: MeetingOutcome[] = ['no_progress', 'qualified', 'strategic'];
 const OUTCOME_BADGE: Record<MeetingOutcome, string> = {
   no_progress: 'badge',
   qualified: 'badge badge-info',
@@ -22,6 +23,7 @@ const OUTCOME_BADGE: Record<MeetingOutcome, string> = {
 };
 
 export function MeetingsPanel({ clients, meetings, staff, busy, actions }: Props) {
+  const t = useT();
   const ask = useConfirm();
   const [client, setClient] = useState('');
   const [outcome, setOutcome] = useState<MeetingOutcome>('qualified');
@@ -52,7 +54,7 @@ export function MeetingsPanel({ clients, meetings, staff, busy, actions }: Props
   }
 
   async function remove(m: MeetingResult) {
-    const res = await ask({ title: 'Удалить результат встречи?', message: `${m.client_code} ${byCode(m.client_code)?.name ?? ''}`, confirmLabel: 'Удалить', danger: true });
+    const res = await ask({ title: t('meet.deleteTitle'), message: `${m.client_code} ${byCode(m.client_code)?.name ?? ''}`, confirmLabel: t('common.delete'), danger: true });
     if (res !== null) void actions.deleteMeeting(m.client_code);
   }
 
@@ -62,8 +64,8 @@ export function MeetingsPanel({ clients, meetings, staff, busy, actions }: Props
         <div className="card-title">
           <Handshake size={20} />
           <div>
-            <h2>Встречи с клиентом</h2>
-            <div className="card-sub">Round 3: куратор играет клиента и фиксирует результат</div>
+            <h2>{t('meet.title')}</h2>
+            <div className="card-sub">{t('meet.sub')}</div>
           </div>
         </div>
         <span className="badge badge-gold">
@@ -71,7 +73,7 @@ export function MeetingsPanel({ clients, meetings, staff, busy, actions }: Props
         </span>
       </div>
       {meetings.length === 0 ? (
-        <Empty title="Результатов пока нет">{staff ? 'Внесите результат после встречи.' : 'Появятся после встреч в Round 3.'}</Empty>
+        <Empty title={t('meet.empty')}>{staff ? t('meet.emptyStaff') : t('meet.emptyViewer')}</Empty>
       ) : (
         <div className="pur-list">
           {meetings.map((m) => (
@@ -82,19 +84,19 @@ export function MeetingsPanel({ clients, meetings, staff, busy, actions }: Props
               <div>
                 <div className="row">
                   <span className="pur-title">{byCode(m.client_code)?.name ?? m.client_code}</span>
-                  <span className={OUTCOME_BADGE[m.outcome]}>{OUTCOME_LABEL[m.outcome]}</span>
+                  <span className={OUTCOME_BADGE[m.outcome]}>{t(`outcome.${m.outcome}` as TKey)}</span>
                 </div>
-                {m.strength && <div className="pur-just"><span className="muted">Сильная сторона:</span> {m.strength}</div>}
-                {m.improvement && <div className="pur-just"><span className="muted">Что улучшить:</span> {m.improvement}</div>}
+                {m.strength && <div className="pur-just"><span className="muted">{t('meet.strength')}:</span> {m.strength}</div>}
+                {m.improvement && <div className="pur-just"><span className="muted">{t('meet.improvement')}:</span> {m.improvement}</div>}
               </div>
               <div className="pur-side">
                 <strong className="num">{money(m.amount)}</strong>
                 {staff && (
                   <div className="pur-actions">
                     <button type="button" className="btn btn-ghost btn-xs" onClick={() => edit(m)}>
-                      Изменить
+                      {t('common.edit')}
                     </button>
-                    <button type="button" className="btn btn-ghost btn-xs" disabled={busy} onClick={() => void remove(m)} aria-label="Удалить">
+                    <button type="button" className="btn btn-ghost btn-xs" disabled={busy} onClick={() => void remove(m)} aria-label={t('common.delete')}>
                       <Trash2 size={14} />
                     </button>
                   </div>
@@ -113,12 +115,12 @@ export function MeetingsPanel({ clients, meetings, staff, busy, actions }: Props
     <div className="grid-2">
       {list}
       <section className="card">
-        <h2>Результат встречи</h2>
+        <h2>{t('meet.formTitle')}</h2>
         <form className="form" onSubmit={(e) => void submit(e)}>
           <label className="field">
-            Клиент
+            {t('meet.client')}
             <select value={client} onChange={(e) => setClient(e.target.value)} required>
-              <option value="">— выберите —</option>
+              <option value="">{t('common.choose')}</option>
               {clients
                 .filter((c) => c.in_game)
                 .map((c) => (
@@ -129,29 +131,29 @@ export function MeetingsPanel({ clients, meetings, staff, busy, actions }: Props
             </select>
           </label>
           <div className="field">
-            Итог
-            <div className="segmented three" role="group" aria-label="Итог встречи">
-              {(Object.keys(OUTCOME_LABEL) as MeetingOutcome[]).map((o) => (
+            {t('meet.outcome')}
+            <div className="segmented three" role="group" aria-label={t('meet.outcome')}>
+              {OUTCOMES.map((o) => (
                 <button key={o} type="button" aria-pressed={outcome === o} onClick={() => setOutcome(o)}>
-                  {OUTCOME_LABEL[o]}
+                  {t(`outcome.${o}` as TKey)}
                 </button>
               ))}
             </div>
           </div>
           <label className="field">
-            Сумма в копилку, $
+            {t('meet.amount')}
             <input type="number" min={0} step={1000} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0" />
           </label>
           <label className="field">
-            Сильная сторона
+            {t('meet.strength')}
             <input value={strength} onChange={(e) => setStrength(e.target.value)} maxLength={500} />
           </label>
           <label className="field">
-            Что улучшить
+            {t('meet.improvement')}
             <input value={improvement} onChange={(e) => setImprovement(e.target.value)} maxLength={500} />
           </label>
           <button type="submit" className="btn btn-primary" disabled={busy || !client}>
-            Сохранить результат
+            {t('meet.save')}
           </button>
         </form>
       </section>

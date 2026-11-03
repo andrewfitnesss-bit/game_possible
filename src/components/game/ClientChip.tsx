@@ -10,6 +10,7 @@ interface Props {
   hints: { h1: boolean; h2: boolean };
   draggable: boolean;
   menu: MenuEntry[] | null;
+  menuLabel?: string;
   onOpen: () => void;
 }
 
@@ -42,7 +43,7 @@ export function ChipBody({
   );
 }
 
-export function ClientChip({ client, placement, hints, draggable, menu, onOpen }: Props) {
+export function ClientChip({ client, placement, hints, draggable, menu, menuLabel, onOpen }: Props) {
   const { setNodeRef, listeners, isDragging } = useDraggable({ id: client.code, disabled: !draggable });
   return (
     <div
@@ -53,10 +54,10 @@ export function ClientChip({ client, placement, hints, draggable, menu, onOpen }
       <ChipBody client={client} placement={placement} hints={hints} onOpen={onOpen} />
       {menu && (
         <Menu
-          label={`Действия с ${client.code}`}
+          label={menuLabel ?? client.code}
           entries={menu}
           trigger={(p) => (
-            <button type="button" className="kebab" aria-label={`Действия с ${client.code}`} {...p}>
+            <button type="button" className="kebab" aria-label={menuLabel ?? client.code} {...p}>
               <MoreHorizontal size={18} />
             </button>
           )}

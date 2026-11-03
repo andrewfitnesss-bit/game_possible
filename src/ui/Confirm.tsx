@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useT } from '../i18n/prefs';
 import { Modal, closeDialog } from './Modal';
 
 export interface ConfirmOptions {
@@ -15,6 +16,7 @@ const ConfirmContext = createContext<Ask | null>(null);
 
 // Замена window.confirm / window.prompt: ask() возвращает текст (или '' без поля) либо null при отмене.
 export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const t = useT();
   const [opts, setOpts] = useState<ConfirmOptions | null>(null);
   const [text, setText] = useState('');
   const resolver = useRef<((v: string | null) => void) | null>(null);
@@ -60,19 +62,19 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
                   maxLength={500}
                   rows={3}
                 />
-                {opts.input.required && <span className="hint-text">Минимум 3 символа</span>}
+                {opts.input.required && <span className="hint-text">{t('common.min3')}</span>}
               </label>
             )}
             <div className="row end">
               <button type="button" className="btn btn-secondary" onClick={(e) => closeDialog(e.currentTarget)}>
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 className={opts.danger ? 'btn btn-danger' : 'btn btn-primary'}
                 disabled={Boolean(opts.input?.required) && text.trim().length < 3}
               >
-                {opts.confirmLabel ?? 'Подтвердить'}
+                {opts.confirmLabel ?? t('common.confirm')}
               </button>
             </div>
           </form>

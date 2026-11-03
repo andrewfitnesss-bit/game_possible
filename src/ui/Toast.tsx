@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CircleAlert, CircleCheck, Info, X } from 'lucide-react';
+import { useT } from '../i18n/prefs';
 
 type Kind = 'success' | 'error' | 'info';
 interface ToastItem {
@@ -17,10 +18,11 @@ const ToastContext = createContext<ToastApi | null>(null);
 const ICONS = { success: CircleCheck, error: CircleAlert, info: Info } as const;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
+  const t = useT();
   const [items, setItems] = useState<ToastItem[]>([]);
   const nextId = useRef(1);
 
-  const dismiss = useCallback((id: number) => setItems((list) => list.filter((t) => t.id !== id)), []);
+  const dismiss = useCallback((id: number) => setItems((list) => list.filter((x) => x.id !== id)), []);
 
   const push = useCallback(
     (kind: Kind, text: string) => {
@@ -44,13 +46,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={api}>
       {children}
       <div className="toasts" aria-live="polite">
-        {items.map((t) => {
-          const Icon = ICONS[t.kind];
+        {items.map((item) => {
+          const Icon = ICONS[item.kind];
           return (
-            <div key={t.id} className={`toast ${t.kind}`} role={t.kind === 'error' ? 'alert' : 'status'}>
+            <div key={item.id} className={`toast ${item.kind}`} role={item.kind === 'error' ? 'alert' : 'status'}>
               <Icon size={18} />
-              <div className="grow">{t.text}</div>
-              <button type="button" onClick={() => dismiss(t.id)} aria-label="Закрыть">
+              <div className="grow">{item.text}</div>
+              <button type="button" onClick={() => dismiss(item.id)} aria-label={t('common.close')}>
                 <X size={16} />
               </button>
             </div>

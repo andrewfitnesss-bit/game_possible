@@ -1,20 +1,14 @@
 import { Check, ClipboardCheck, X } from 'lucide-react';
-import { checkpoints, settingsOf } from '../../lib/game';
-import type { TeamData } from '../../lib/useTeamData';
+import { useT } from '../../i18n/prefs';
+import { checkpoints } from '../../lib/game';
+import { teamState, type TeamData } from '../../lib/useTeamData';
 
 export function teamChecks(data: TeamData) {
-  return checkpoints({
-    clients: data.clients,
-    catalog: data.catalog,
-    placements: data.placements,
-    kams: data.kams,
-    purchases: data.purchases,
-    meetings: data.meetings.length,
-    settings: settingsOf(data.game),
-  });
+  return checkpoints(teamState(data));
 }
 
 export function CheckpointsPanel({ data }: { data: TeamData }) {
+  const t = useT();
   const groups = teamChecks(data);
   return (
     <div className="grid-auto">
@@ -25,7 +19,7 @@ export function CheckpointsPanel({ data }: { data: TeamData }) {
             <div className="card-head">
               <div className="card-title">
                 <ClipboardCheck size={20} />
-                <h2>{g.title}</h2>
+                <h2>{t(g.title)}</h2>
               </div>
               <span className={done === g.checks.length ? 'badge badge-success' : 'badge badge-warning'}>
                 {done}/{g.checks.length}
@@ -36,8 +30,8 @@ export function CheckpointsPanel({ data }: { data: TeamData }) {
                 <div key={c.label} className="check-item">
                   <span className={c.ok ? 'check-icon ok' : 'check-icon bad'}>{c.ok ? <Check /> : <X />}</span>
                   <div>
-                    <div className="strong small">{c.label}</div>
-                    {c.detail && <div className="muted xsmall">{c.detail}</div>}
+                    <div className="strong small">{t(c.label, c.vars)}</div>
+                    {c.detail && <div className="muted xsmall">{t(c.detail.key, c.detail.vars)}</div>}
                   </div>
                 </div>
               ))}

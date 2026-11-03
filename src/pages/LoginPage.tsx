@@ -1,11 +1,16 @@
 import { useState, type FormEvent } from 'react';
-import { Coins, LogIn, Swords, Target, UserPlus, Users } from 'lucide-react';
+import { Coins, LogIn, Settings2, Swords, Target, UserPlus, Users } from 'lucide-react';
 import { useAuth } from '../auth';
+import { prefsEntries } from '../components/layout/AppShell';
+import { usePrefs, type TKey } from '../i18n/prefs';
+import { Menu } from '../ui/Menu';
 
 type Mode = 'login' | 'register';
 
 export function LoginPage() {
   const { signIn, signUp } = useAuth();
+  const prefs = usePrefs();
+  const { t } = prefs;
   const [mode, setMode] = useState<Mode>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -20,9 +25,9 @@ export function LoginPage() {
     setError(null);
     try {
       const result = mode === 'login' ? await signIn(username, password) : await signUp(username, password, fullName);
-      if (result) setError(result);
+      if (result) setError(result.startsWith('auth.') ? t(result as TKey) : result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Неизвестная ошибка');
+      setError(err instanceof Error ? err.message : t('common.unknownError'));
     } finally {
       setBusy(false);
     }
@@ -35,56 +40,67 @@ export function LoginPage() {
 
   return (
     <div className="login">
+      <div className="login-tools">
+        <Menu
+          label={t('shell.menu')}
+          entries={prefsEntries(t, prefs, prefs.setPrefs)}
+          trigger={(p) => (
+            <button type="button" className="btn btn-ghost btn-sm login-prefs" {...p}>
+              <Settings2 size={16} />
+              {prefs.lang === 'ru' ? 'RU' : 'EN'}
+            </button>
+          )}
+        />
+      </div>
+
       <section className="login-hero">
-        <span className="login-kicker">Megaland · 2027</span>
+        <span className="login-kicker">{t('login.kicker')}</span>
         <h1 className="login-title">
           The NAL
           <br />
           Games
         </h1>
-        <p className="login-sub">Mission: Possible</p>
+        <p className="login-sub">{t('login.sub')}</p>
         <div className="login-points">
           <span>
-            <Target /> Портфель клиентов
+            <Target /> {t('login.point1')}
           </span>
           <span>
-            <Users /> KAM и SSM
+            <Users /> {t('login.point2')}
           </span>
           <span>
-            <Coins /> Бюджет на ходы
+            <Coins /> {t('login.point3')}
           </span>
           <span>
-            <Swords /> Борьба столов
+            <Swords /> {t('login.point4')}
           </span>
         </div>
       </section>
 
       <form className="login-card form" onSubmit={(e) => void onSubmit(e)}>
         <div>
-          <h1>{mode === 'login' ? 'Вход в игру' : 'Регистрация'}</h1>
-          <p className="muted small login-hint">
-            {mode === 'login' ? 'Войдите под своим логином.' : 'После регистрации администратор распределит вас за стол.'}
-          </p>
+          <h1>{mode === 'login' ? t('login.titleLogin') : t('login.titleRegister')}</h1>
+          <p className="muted small login-hint">{mode === 'login' ? t('login.hintLogin') : t('login.hintRegister')}</p>
         </div>
 
-        <div className="segmented" role="group" aria-label="Режим">
+        <div className="segmented" role="group">
           <button type="button" aria-pressed={mode === 'login'} onClick={() => switchMode('login')}>
-            Вход
+            {t('login.tabLogin')}
           </button>
           <button type="button" aria-pressed={mode === 'register'} onClick={() => switchMode('register')}>
-            Регистрация
+            {t('login.tabRegister')}
           </button>
         </div>
 
         {mode === 'register' && (
           <label className="field">
-            Имя и фамилия
+            {t('login.fullName')}
             <input value={fullName} onChange={(e) => setFullName(e.target.value)} maxLength={100} autoComplete="name" required />
           </label>
         )}
 
         <label className="field">
-          Логин
+          {t('login.username')}
           <input
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -96,7 +112,7 @@ export function LoginPage() {
         </label>
 
         <label className="field">
-          Пароль
+          {t('login.password')}
           <input
             type="password"
             value={password}
@@ -114,7 +130,7 @@ export function LoginPage() {
 
         <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={busy}>
           {mode === 'login' ? <LogIn size={18} /> : <UserPlus size={18} />}
-          {busy ? 'Подождите…' : mode === 'login' ? 'Войти' : 'Зарегистрироваться'}
+          {busy ? t('login.wait') : mode === 'login' ? t('login.submitLogin') : t('login.submitRegister')}
         </button>
       </form>
 

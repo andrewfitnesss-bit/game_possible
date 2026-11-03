@@ -107,11 +107,11 @@ export function Empty({ icon, title, children }: { icon?: ReactNode; title: stri
   );
 }
 
-export function Loading({ text = 'Загрузка…' }: { text?: string }) {
+export function Loading({ text }: { text?: string }) {
   return (
     <div className="loading" role="status">
       <div className="spinner" />
-      {text}
+      {text ?? '…'}
     </div>
   );
 }

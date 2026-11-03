@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase, USERNAME_RE, usernameToEmail } from './lib/supabase';
 import type { Profile } from './lib/types';
 
+// signIn/signUp возвращают ключ перевода 'auth.*' или текст ошибки Supabase.
 interface AuthState {
   session: Session | null;
   profile: Profile | null;
@@ -17,9 +18,9 @@ const AuthContext = createContext<AuthState | null>(null);
 
 function checkCredentials(username: string, password: string): string | null {
   if (!USERNAME_RE.test(username.trim().toLowerCase())) {
-    return 'Логин: 3–32 символа, латиница, цифры и _ . -';
+    return 'auth.badUsername';
   }
-  if (password.length < 6) return 'Пароль должен быть не короче 6 символов';
+  if (password.length < 6) return 'auth.shortPassword';
   return null;
 }
 
@@ -82,24 +83,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const problem = checkCredentials(username, password);
     if (problem) return problem;
     const { error } = await supabase.auth.signInWithPassword({ email: usernameToEmail(username), password });
-    return error ? 'Неверный логин или пароль' : null;
+    return error ? 'auth.wrongCredentials' : null;
   }, []);
 
   const signUp = useCallback(async (username: string, password: string, fullName: string) => {
     const problem = checkCredentials(username, password);
     if (problem) return problem;
     const name = fullName.trim();
-    if (name.length < 2 || name.length > 100) return 'Укажите имя (2–100 символов)';
+    if (name.length < 2 || name.length > 100) return 'auth.badName';
     const { data, error } = await supabase.auth.signUp({
       email: usernameToEmail(username),
       password,
       options: { data: { full_name: name } },
     });
     if (error) {
-      return /already|registered/i.test(error.message) ? 'Такой логин уже занят' : error.message;
+      return /already|registered/i.test(error.message) ? 'auth.taken' : error.message;
     }
     if (!data.session) {
-      return 'Аккаунт создан, но вход не выполнен: в Supabase включено подтверждение email';
+      return 'auth.confirmEmail';
     }
     return null;
   }, []);

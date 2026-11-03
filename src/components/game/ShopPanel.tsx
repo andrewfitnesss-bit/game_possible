@@ -1,9 +1,11 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { Building, Coins, Lock, Megaphone, MessageSquareQuote, ShoppingCart, Sparkles, Eye } from 'lucide-react';
-import { CATEGORY_LABEL, categoryCap, hasApproved, PHASES, PURCHASE_PHASES, spendOf } from '../../lib/game';
+import { Building, Coins, Eye, GraduationCap, Lock, Megaphone, MessageSquareQuote, ShoppingCart, Sparkles } from 'lucide-react';
+import { useT, type TKey } from '../../i18n/prefs';
+import { categoryCap, hasApproved, PURCHASE_PHASES, type Spend } from '../../lib/game';
 import { CATEGORY_COLOR, verticalStyle } from '../../lib/verticals';
 import type { Category, Client, GameSettings, Phase } from '../../lib/types';
 import type { TeamData } from '../../lib/useTeamData';
+import { useConfirm } from '../../ui/Confirm';
 import { Stat, Tabs } from '../../ui/kit';
 import type { WorkspaceActions } from './actions';
 import { PurchaseDialog, type ShopOption } from './PurchaseDialog';
@@ -12,6 +14,7 @@ import { PurchaseHistory } from './PurchaseHistory';
 interface Props {
   data: TeamData;
   settings: GameSettings;
+  spend: Spend;
   phase: Phase;
   staff: boolean;
   captain: boolean;
@@ -20,9 +23,9 @@ interface Props {
   onOpenClient: (c: Client) => void;
 }
 
-const CATEGORY_ICON = { info: Sparkles, marketing: Megaphone, hq: Building } as const;
-
 type Section = Category | 'history';
+const CATEGORY_ICON = { info: Sparkles, marketing: Megaphone, hq: Building } as const;
+const TITLE: Record<Category, TKey> = { info: 'shop.infoTitle', marketing: 'shop.marketingTitle', hq: 'shop.hqTitle' };
 
 function defaultSection(phase: Phase): Section {
   if (PURCHASE_PHASES.marketing.includes(phase)) return 'marketing';
@@ -30,14 +33,10 @@ function defaultSection(phase: Phase): Section {
   return 'info';
 }
 
-function opensIn(category: Category): string {
-  const first = PURCHASE_PHASES[category][0];
-  return PHASES.find((p) => p.id === first)?.short ?? first;
-}
-
-export function ShopPanel({ data, settings, phase, staff, captain, busy, actions, onOpenClient }: Props) {
+export function ShopPanel({ data, settings, spend, phase, staff, captain, busy, actions, onOpenClient }: Props) {
+  const t = useT();
+  const ask = useConfirm();
   const { catalog, secrets, clients, purchases, hqRequests } = data;
-  const spend = spendOf(purchases);
   const inGame = useMemo(() => clients.filter((c) => c.in_game), [clients]);
   const [selected, setSelected] = useState<ShopOption | null>(null);
   const [view, setView] = useState<Section>(() => defaultSection(phase));
@@ -45,7 +44,6 @@ export function ShopPanel({ data, settings, phase, staff, captain, busy, actions
   const canBuy = (c: Category) => staff || (captain && PURCHASE_PHASES[c].includes(phase));
   const secretOf = (code: string) => secrets.find((s) => s.code === code)?.note;
   const owned = (item: string) => purchases.filter((p) => p.item === item && p.status === 'approved').length;
-  const pending = purchases.filter((p) => p.status === 'pending');
   const consultNote = hasApproved(purchases, 'CONSULT') ? secretOf('CONSULT') : undefined;
 
   const options = useMemo<ShopOption[]>(
@@ -85,39 +83,43 @@ export function ShopPanel({ data, settings, phase, staff, captain, busy, actions
     [catalog, hqRequests, secrets],
   );
 
-  async function buyInfo(item: string, client: string | null) {
-    const ok = await actions.createPurchase(item, client ? [client] : [], '', null);
-    return ok;
+  // Подсказки и консультация покупаются в одно действие с подтверждением необратимости.
+  async function buyHint(item: 'HINT1' | 'HINT2', c: Client) {
+    const ok = await ask({
+      title: t('shop.buyHintTitle', { hint: item === 'HINT1' ? 'Hint 1' : 'Hint 2', code: c.code }),
+      message: t('shop.buyHintText', { name: c.name }),
+      confirmLabel: t('shop.buyFor', { n: 1 }),
+    });
+    if (ok !== null) void actions.createPurchase(item, [c.code], '', null);
+  }
+
+  async function buyConsult() {
+    const ok = await ask({ title: t('shop.buyConsultTitle'), message: t('shop.buyConsultText'), confirmLabel: t('shop.buyFor', { n: 1 }) });
+    if (ok !== null) void actions.createPurchase('CONSULT', [], '', null);
   }
 
   function lockNote(c: Category): ReactNode {
     if (canBuy(c)) return null;
-    if (!captain && !staff) return <span className="badge">Покупает капитан</span>;
+    if (!captain && !staff) return <span className="badge">{t('shop.captainBuys')}</span>;
     return (
       <span className="badge">
-        <Lock /> Откроется в {opensIn(c)}
+        <Lock /> {t('shop.opensIn', { phase: t(`phaseShort.${PURCHASE_PHASES[c][0]}` as TKey) })}
       </span>
     );
   }
 
-  const section = (c: Category, extra?: ReactNode) => {
+  const sectionHead = (c: Category) => {
     const Icon = CATEGORY_ICON[c];
-    const left = categoryCap(settings, c) - spend.byCategory[c];
     return (
       <div className="card-head">
         <div className="card-title">
           <Icon size={20} />
           <div>
-            <h2>{c === 'info' ? 'Информация о клиентах' : c === 'marketing' ? 'Local Marketing' : 'HQ Capability'}</h2>
-            <div className="card-sub">
-              Осталось {left} из {categoryCap(settings, c)} мон. в категории
-            </div>
+            <h2>{t(TITLE[c])}</h2>
+            <div className="card-sub">{t('shop.remaining', { left: categoryCap(settings, c) - spend.byCategory[c], cap: categoryCap(settings, c) })}</div>
           </div>
         </div>
-        <div className="row">
-          {extra}
-          {lockNote(c)}
-        </div>
+        {lockNote(c)}
       </div>
     );
   };
@@ -125,111 +127,64 @@ export function ShopPanel({ data, settings, phase, staff, captain, busy, actions
   return (
     <div className="stack-lg">
       <div className="stats">
-        <Stat label="Бюджет" icon={<Coins />} value={spend.total} max={settings.budget} />
+        <Stat label={t('ws.statBudget')} icon={<Coins />} value={spend.total} max={settings.budget} />
         {(['info', 'marketing', 'hq'] as const).map((c) => {
           const Icon = CATEGORY_ICON[c];
-          return (
-            <Stat
-              key={c}
-              label={CATEGORY_LABEL[c]}
-              icon={<Icon />}
-              value={spend.byCategory[c]}
-              max={categoryCap(settings, c)}
-            />
-          );
+          return <Stat key={c} label={t(`cat.${c}` as TKey)} icon={<Icon />} value={spend.byCategory[c]} max={categoryCap(settings, c)} />;
         })}
+        <Stat label={t('cat.spec')} icon={<GraduationCap />} value={spend.specs} max={settings.cost_spec * settings.max_specs} />
       </div>
 
       {consultNote && (
         <details className="callout callout-ember consult">
           <summary>
             <MessageSquareQuote size={20} />
-            <strong className="grow">Сообщение от бывшего коллеги</strong>
-            <span className="xsmall consult-toggle">показать</span>
+            <strong className="grow">{t('shop.consultMsg')}</strong>
+            <span className="xsmall consult-toggle">{t('shop.show')}</span>
           </summary>
           <p className="small">{consultNote}</p>
         </details>
       )}
 
-      {staff && pending.length > 0 && (
-        <section className="card">
-          <div className="card-head">
-            <div className="card-title">
-              <ShoppingCart size={20} />
-              <h2>Ждут решения</h2>
-            </div>
-            <span className="badge badge-warning">{pending.length}</span>
-          </div>
-          <PurchaseHistory
-            purchases={pending}
-            catalog={catalog}
-            requests={hqRequests}
-            staff
-            busy={busy}
-            actions={actions}
-          />
-        </section>
-      )}
-
       <Tabs
         pills
-        label="Разделы магазина"
+        label={t('shop.sections')}
         value={view}
         onChange={setView}
         tabs={[
-          { id: 'info', label: 'Подсказки', icon: <Sparkles size={16} /> },
-          { id: 'marketing', label: 'Маркетинг', icon: <Megaphone size={16} /> },
-          { id: 'hq', label: 'HQ', icon: <Building size={16} /> },
-          { id: 'history', label: 'История', icon: <ShoppingCart size={16} />, count: purchases.length },
+          { id: 'info', label: t('shop.tabHints'), icon: <Sparkles size={16} /> },
+          { id: 'marketing', label: t('shop.tabMarketing'), icon: <Megaphone size={16} /> },
+          { id: 'hq', label: t('shop.tabHq'), icon: <Building size={16} /> },
+          { id: 'history', label: t('shop.tabHistory'), icon: <ShoppingCart size={16} />, count: purchases.filter((p) => p.status === 'approved').length },
         ]}
       />
 
       {view === 'info' && (
         <section className="card">
-          {section('info')}
+          {sectionHead('info')}
           <div className="hints-grid">
             {inGame.map((c) => {
               const h1 = hasApproved(purchases, 'HINT1', c.code);
               const h2 = hasApproved(purchases, 'HINT2', c.code);
-              const waiting = pending.some(
-                (p) => (p.item === 'HINT1' || p.item === 'HINT2') && p.targets.includes(c.code),
-              );
               const next = !h1 ? 'HINT1' : !h2 ? 'HINT2' : null;
               return (
                 <div key={c.code} className="hint-row">
                   <span className="code-badge" style={verticalStyle(c.code)}>
                     {c.code}
                   </span>
-                  <button
-                    type="button"
-                    className="grow chip-main"
-                    onClick={() => onOpenClient(c)}
-                    title="Открыть карточку"
-                  >
+                  <button type="button" className="grow chip-main" onClick={() => onOpenClient(c)} title={t('board.openCard')}>
                     <span className="name">{c.name}</span>
                     <span className="chip-sub">{c.industry}</span>
                   </button>
                   <span className="hint-state">
                     {h1 && <span className="pip">H1</span>}
                     {h2 && <span className="pip">H2</span>}
-                    {waiting ? (
-                      <span className="badge badge-warning">ждёт</span>
-                    ) : next && canBuy('info') ? (
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-xs"
-                        disabled={busy}
-                        onClick={() => void buyInfo(next, c.code)}
-                      >
+                    {next && canBuy('info') ? (
+                      <button type="button" className="btn btn-secondary btn-xs" disabled={busy} onClick={() => void buyHint(next, c)}>
                         {next === 'HINT1' ? 'H1' : 'H2'} · 1
                       </button>
                     ) : !next ? (
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-xs"
-                        onClick={() => onOpenClient(c)}
-                        aria-label={`Открыть ${c.code}`}
-                      >
+                      <button type="button" className="btn btn-ghost btn-xs" onClick={() => onOpenClient(c)} aria-label={t('board.openCard')}>
                         <Eye size={14} />
                       </button>
                     ) : null}
@@ -242,21 +197,14 @@ export function ShopPanel({ data, settings, phase, staff, captain, busy, actions
             <div className="callout callout-ember">
               <MessageSquareQuote size={20} />
               <div className="grow stack">
-                <strong>Встреча с бывшим коллегой · 1 монета</strong>
-                <span className="small">
-                  Открывает специализацию Other Enterprise. По сценарию предлагается в R1.3 через пару минут обсуждения.
-                </span>
+                <strong>{t('shop.consultTitle')}</strong>
+                <span className="small">{t('shop.consultText')}</span>
               </div>
               {hasApproved(purchases, 'CONSULT') ? (
-                <span className="badge badge-success">Продано</span>
+                <span className="badge badge-success">{t('shop.sold')}</span>
               ) : (
-                <button
-                  type="button"
-                  className="btn btn-primary btn-sm"
-                  disabled={busy}
-                  onClick={() => void buyInfo('CONSULT', null)}
-                >
-                  Продать
+                <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={() => void buyConsult()}>
+                  {t('shop.buy')}
                 </button>
               )}
             </div>
@@ -268,24 +216,19 @@ export function ShopPanel({ data, settings, phase, staff, captain, busy, actions
         .filter((c) => c === view)
         .map((c) => (
           <section key={c} className="card">
-            {section(c)}
+            {sectionHead(c)}
             <div className="catalog-grid">
               {options
                 .filter((o) => o.category === c)
                 .map((o) => {
-                  const count =
-                    o.item === 'REQ'
-                      ? purchases.filter((p) => p.request_id === o.requestId && p.status === 'approved').length
-                      : owned(o.item);
-                  const available = canBuy(c);
+                  const count = o.item === 'REQ' ? purchases.filter((p) => p.request_id === o.requestId && p.status === 'approved').length : owned(o.item);
+                  const available = canBuy(c) && !(o.item === 'REQ' && count > 0);
                   return (
-                    <article key={o.key} className={available ? 'item-card' : 'item-card locked'}>
-                      {count > 0 && (
-                        <span className="item-owned badge badge-success">куплено{count > 1 ? ` ×${count}` : ''}</span>
-                      )}
+                    <article key={o.key} className={canBuy(c) ? 'item-card' : 'item-card locked'}>
+                      {count > 0 && <span className="item-owned badge badge-success">{count > 1 ? t('shop.boughtTimes', { n: count }) : t('shop.bought')}</span>}
                       <div className="item-top">
                         <span className="item-code" style={{ '--cat': CATEGORY_COLOR[c] } as CSSProperties}>
-                          {o.item === 'REQ' ? 'Запрос' : o.code}
+                          {o.item === 'REQ' ? t('shop.request') : o.code}
                         </span>
                         <span className="coin">{o.cost}</span>
                       </div>
@@ -294,16 +237,12 @@ export function ShopPanel({ data, settings, phase, staff, captain, busy, actions
                       {staff && o.secret && <div className="item-secret">{o.secret}</div>}
                       <div className="item-foot">
                         <span className="muted xsmall">
-                          {o.maxTargets
-                            ? `до ${o.maxTargets} клиентов`
-                            : o.fixedTargets.length
-                              ? o.fixedTargets.join(', ')
-                              : 'без целевых клиентов'}
-                          {o.leads ? ` · ${o.leads} лидов` : ''}
+                          {o.maxTargets ? t('shop.upTo', { n: o.maxTargets }) : o.fixedTargets.length ? o.fixedTargets.join(', ') : t('shop.noTargets')}
+                          {o.leads ? ` · ${t('shop.leads', { n: o.leads })}` : ''}
                         </span>
                         {available && (
                           <button type="button" className="btn btn-primary btn-sm" onClick={() => setSelected(o)}>
-                            {staff ? 'Продать' : 'Заказать'}
+                            {t('shop.buy')}
                           </button>
                         )}
                       </div>
@@ -319,18 +258,11 @@ export function ShopPanel({ data, settings, phase, staff, captain, busy, actions
           <div className="card-head">
             <div className="card-title">
               <ShoppingCart size={20} />
-              <h2>История покупок</h2>
+              <h2>{t('shop.historyTitle')}</h2>
             </div>
-            <span className="muted small">Проведено на {spend.total} мон.</span>
+            <span className="muted small">{t('shop.spent', { n: spend.total })}</span>
           </div>
-          <PurchaseHistory
-            purchases={purchases}
-            catalog={catalog}
-            requests={hqRequests}
-            staff={staff}
-            busy={busy}
-            actions={actions}
-          />
+          <PurchaseHistory purchases={purchases} catalog={catalog} requests={hqRequests} staff={staff} busy={busy} actions={actions} />
         </section>
       )}
 
@@ -344,12 +276,7 @@ export function ShopPanel({ data, settings, phase, staff, captain, busy, actions
           busy={busy}
           onClose={() => setSelected(null)}
           onSubmit={(targets, justification) =>
-            actions.createPurchase(
-              selected.item,
-              selected.item === 'REQ' ? selected.fixedTargets : targets,
-              justification,
-              selected.requestId,
-            )
+            actions.createPurchase(selected.item, selected.item === 'REQ' ? selected.fixedTargets : targets, justification, selected.requestId)
           }
         />
       )}

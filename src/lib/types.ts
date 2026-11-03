@@ -17,9 +17,6 @@ export interface GameSettings {
   cap_info: number;
   cap_marketing: number;
   cap_hq: number;
-  capacity: number;
-  cost_active: number;
-  cost_maintenance: number;
   cost_spec: number;
   kams: number;
   max_active_per_kam: number;
@@ -45,6 +42,7 @@ export interface Profile {
   game_id: string | null;
   team_id: string | null;
   created_at: string;
+  prefs?: Record<string, unknown>;
 }
 
 export interface AuditEntry {

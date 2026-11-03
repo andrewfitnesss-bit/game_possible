@@ -10,8 +10,9 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { ArrowRightLeft, Building2, CircleCheck, Eye, Headset, Inbox } from 'lucide-react';
-import { hasApproved, SPEC_LABEL } from '../../lib/game';
+import { ArrowRightLeft, Building2, CircleAlert, CircleCheck, Eye, Headset, Inbox } from 'lucide-react';
+import { useT, type TKey } from '../../i18n/prefs';
+import { hasApproved, SPECIALIZATIONS } from '../../lib/game';
 import type { Bucket, Client, GameSettings, Placement, Purchase, Specialization, TeamKam } from '../../lib/types';
 import type { MenuEntry } from '../../ui/Menu';
 import { ChipBody, ClientChip } from './ClientChip';
@@ -46,6 +47,7 @@ interface Props {
 }
 
 export function TeamBoard({ clients, placements, kams, purchases, settings, canEdit, canSpec, onMove, onSpec, onOpen }: Props) {
+  const t = useT();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } }),
@@ -67,7 +69,7 @@ export function TeamBoard({ clients, placements, kams, purchases, settings, canE
   const inGame = useMemo(() => clients.filter((c) => c.in_game), [clients]);
   const list = [...effective.values()];
   const consult = hasApproved(purchases, 'CONSULT');
-  const specOptions = (Object.keys(SPEC_LABEL) as Specialization[]).filter((s) => s !== 'other_enterprise' || consult);
+  const specOptions = SPECIALIZATIONS.filter((s) => s !== 'other_enterprise' || consult);
 
   const count = (id: string) => list.filter((p) => targetId(p) === id).length;
   const limitOf = (id: string): number | undefined =>
@@ -89,9 +91,7 @@ export function TeamBoard({ clients, placements, kams, purchases, settings, canE
     if (targetId(current) === id && (current?.ssm ?? null) === ssm) return;
     setOptimistic((o) => ({
       ...o,
-      [code]: target.bucket
-        ? { team_id: current?.team_id ?? '', client_code: code, bucket: target.bucket, kam: target.kam, ssm }
-        : null,
+      [code]: target.bucket ? { team_id: current?.team_id ?? '', client_code: code, bucket: target.bucket, kam: target.kam, ssm } : null,
     }));
     const ok = await onMove(code, target.bucket, target.kam, ssm);
     if (!ok) {
@@ -111,33 +111,27 @@ export function TeamBoard({ clients, placements, kams, purchases, settings, canE
     if (e.over) void moveTo(String(e.active.id), String(e.over.id));
   }
 
-  function menuFor(c: Client): MenuEntry[] | null {
+  function menuFor(c: Client): MenuEntry[] {
     const current = targetId(effective.get(c.code));
     const p = effective.get(c.code);
-    const entries: MenuEntry[] = [{ type: 'item', label: 'Открыть карточку', icon: <Eye size={16} />, onSelect: () => onOpen(c) }];
+    const entries: MenuEntry[] = [{ type: 'item', label: t('board.openCard'), icon: <Eye size={16} />, onSelect: () => onOpen(c) }];
     if (!canEdit) return entries;
-    entries.push({ type: 'sep' }, { type: 'label', label: 'Переместить' });
+    entries.push({ type: 'sep' }, { type: 'label', label: t('board.move') });
     const option = (id: string, label: string) =>
-      entries.push({
-        type: 'item',
-        label,
-        checked: current === id,
-        disabled: isFull(id, c.code),
-        onSelect: () => void moveTo(c.code, id),
-      });
+      entries.push({ type: 'item', label, checked: current === id, disabled: isFull(id, c.code), onSelect: () => void moveTo(c.code, id) });
     for (let k = 1; k <= settings.kams; k += 1) {
-      option(`k${k}-active`, `KAM ${k} · Active`);
-      option(`k${k}-maint`, `KAM ${k} · Maintenance`);
+      option(`k${k}-active`, t('board.moveActive', { n: k }));
+      option(`k${k}-maint`, t('board.moveMaint', { n: k }));
     }
-    option('mm', 'MidMarket');
-    option('pool', 'Снять с доски');
+    option('mm', t('board.midmarket'));
+    option('pool', t('board.movePool'));
     if (p?.bucket === 'active') {
-      entries.push({ type: 'sep' }, { type: 'label', label: 'Solution Sales Manager' });
-      entries.push({ type: 'item', label: 'Без SSM', checked: !p.ssm, onSelect: () => void moveTo(c.code, current, null) });
+      entries.push({ type: 'sep' }, { type: 'label', label: t('board.ssmLabel') });
+      entries.push({ type: 'item', label: t('board.noSsm'), checked: !p.ssm, onSelect: () => void moveTo(c.code, current, null) });
       for (let n = 1; n <= settings.ssm_count; n += 1) {
         entries.push({
           type: 'item',
-          label: `SSM ${n} · ${ssmLoad(n)}/${settings.ssm_max_clients}`,
+          label: t('board.ssmItem', { n, used: ssmLoad(n), max: settings.ssm_max_clients }),
           icon: <Headset size={16} />,
           checked: p.ssm === n,
           disabled: p.ssm !== n && ssmLoad(n) >= settings.ssm_max_clients,
@@ -159,6 +153,7 @@ export function TeamBoard({ clients, placements, kams, purchases, settings, canE
           hints={hintsOf(c.code)}
           draggable={canEdit}
           menu={menuFor(c)}
+          menuLabel={t('board.actions', { code: c.code })}
           onOpen={() => onOpen(c)}
         />
       ));
@@ -169,86 +164,88 @@ export function TeamBoard({ clients, placements, kams, purchases, settings, canE
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
       <div className="board">
-        <Zone
-          id="pool"
-          className="lane pool"
+        {poolClients.length > 0 && canEdit && (
+          <div className="callout callout-warning" role="status">
+            <CircleAlert size={18} />
+            <span>{t('board.unplacedWarn', { n: poolClients.length })}</span>
+          </div>
+        )}
+
+        <PoolZone
           head={
             <div className="lane-head">
               <span className="lane-icon pool">
                 <Inbox size={16} />
               </span>
               <div className="grow">
-                <h3>Не распределены</h3>
-                <span className="muted xsmall">
-                  {canEdit ? 'Перетащите клиента к KAM или в MidMarket, либо используйте меню «⋯»' : 'Раскладку делает капитан'}
-                </span>
+                <h3>{t('board.pool')}</h3>
+                <span className="muted xsmall">{canEdit ? t('board.poolHintEdit') : t('board.poolHintView')}</span>
               </div>
-              <span className="badge">{poolClients.length}</span>
+              <span className={poolClients.length ? 'badge badge-warning' : 'badge badge-success'}>{poolClients.length}</span>
             </div>
           }
+          pending={poolClients.length > 0}
         >
           {poolClients.length ? (
             <div className="pool-grid">{poolClients}</div>
           ) : (
             <div className="pool-done">
-              <CircleCheck size={18} /> Все клиенты распределены
+              <CircleCheck size={18} /> {t('board.allPlaced')}
             </div>
           )}
-        </Zone>
+        </PoolZone>
 
         <div className="board-grid">
           {Array.from({ length: settings.kams }, (_, i) => {
             const k = i + 1;
             const spec = kams.find((x) => x.kam === k)?.specialization ?? null;
             return (
-              <section key={k} className="lane" aria-label={`KAM ${k}`}>
+              <section key={k} className="lane" aria-label={t('board.kam', { n: k })}>
                 <div className="lane-head">
                   <span className="lane-icon">K{k}</span>
                   <div className="grow">
-                    <h3>KAM {k}</h3>
+                    <h3>{t('board.kam', { n: k })}</h3>
                     {canSpec ? (
                       <select
                         className={spec ? 'spec-select set' : 'spec-select'}
-                        aria-label={`Специализация KAM ${k}`}
+                        aria-label={`${t('ws.statSpecs')}: KAM ${k}`}
                         value={spec ?? ''}
                         onChange={(e) => onSpec(k, (e.target.value || null) as Specialization | null)}
                       >
-                        <option value="">+ специализация</option>
+                        <option value="">{spec ? t('board.territorial') : t('board.specAdd', { cost: settings.cost_spec })}</option>
                         {specOptions.map((s) => (
                           <option key={s} value={s}>
-                            {SPEC_LABEL[s]}
+                            {t(`spec.${s}` as TKey)}
                           </option>
                         ))}
                       </select>
                     ) : (
-                      <span className={spec ? 'badge badge-primary' : 'muted xsmall'}>
-                        {spec ? SPEC_LABEL[spec] : 'Территориальный KAM'}
-                      </span>
+                      <span className={spec ? 'badge badge-primary' : 'muted xsmall'}>{spec ? t(`spec.${spec}` as TKey) : t('board.territorial')}</span>
                     )}
                   </div>
                 </div>
-                <SlotZone id={`k${k}-active`} name="Active" kind="zone-active" limit={settings.max_active_per_kam} count={count(`k${k}-active`)} blocked={isFull(`k${k}-active`, dragging ?? undefined)}>
+                <SlotZone id={`k${k}-active`} name={t('board.active')} kind="zone-active" limit={settings.max_active_per_kam} count={count(`k${k}-active`)} blocked={isFull(`k${k}-active`, dragging ?? undefined)} freeLabel={t('board.free')}>
                   {chipsIn(`k${k}-active`)}
                 </SlotZone>
-                <SlotZone id={`k${k}-maint`} name="Maintenance" kind="zone-maint" limit={settings.max_maint_per_kam} count={count(`k${k}-maint`)} blocked={isFull(`k${k}-maint`, dragging ?? undefined)}>
+                <SlotZone id={`k${k}-maint`} name={t('board.maintenance')} kind="zone-maint" limit={settings.max_maint_per_kam} count={count(`k${k}-maint`)} blocked={isFull(`k${k}-maint`, dragging ?? undefined)} freeLabel={t('board.free')}>
                   {chipsIn(`k${k}-maint`)}
                 </SlotZone>
               </section>
             );
           })}
 
-          <section className="lane mm-col" aria-label="MidMarket">
+          <section className="lane mm-col" aria-label={t('board.midmarket')}>
             <div className="lane-head">
               <span className="lane-icon mm">
                 <Building2 size={16} />
               </span>
               <div className="grow">
-                <h3>MidMarket</h3>
-                <span className="muted xsmall">Передача, без затрат Capacity</span>
+                <h3>{t('board.midmarket')}</h3>
+                <span className="muted xsmall">{t('board.midmarketSub')}</span>
               </div>
               <span className="badge">{count('mm')}</span>
             </div>
-            <SlotZone id="mm" name="Transfer" kind="zone-mm" count={count('mm')} blocked={false}>
+            <SlotZone id="mm" name={t('board.transfer')} kind="zone-mm" count={count('mm')} blocked={false} freeLabel={t('board.free')}>
               {chipsIn('mm')}
             </SlotZone>
           </section>
@@ -267,10 +264,10 @@ export function TeamBoard({ clients, placements, kams, purchases, settings, canE
   );
 }
 
-function Zone({ id, className, head, children }: { id: string; className: string; head: ReactNode; children: ReactNode }) {
-  const { setNodeRef, isOver } = useDroppable({ id });
+function PoolZone({ head, pending, children }: { head: ReactNode; pending: boolean; children: ReactNode }) {
+  const { setNodeRef, isOver } = useDroppable({ id: 'pool' });
   return (
-    <section ref={setNodeRef} className={`${className}${isOver ? ' is-over' : ''}`}>
+    <section ref={setNodeRef} className={`lane pool${pending ? ' pending' : ''}${isOver ? ' is-over' : ''}`}>
       {head}
       {children}
     </section>
@@ -284,6 +281,7 @@ function SlotZone({
   limit,
   count,
   blocked,
+  freeLabel,
   children,
 }: {
   id: string;
@@ -292,6 +290,7 @@ function SlotZone({
   limit?: number;
   count: number;
   blocked: boolean;
+  freeLabel: string;
   children: ReactNode;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id });
@@ -308,7 +307,7 @@ function SlotZone({
       {children}
       {Array.from({ length: free }, (_, i) => (
         <div key={i} className="slot-empty">
-          свободно
+          {freeLabel}
         </div>
       ))}
     </div>

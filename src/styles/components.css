@@ -7,7 +7,7 @@
   position: sticky; top: 0; z-index: 40;
   background: linear-gradient(180deg, var(--ink) 0%, var(--ink-2) 100%);
   color: var(--ink-text);
-  border-bottom: 1px solid rgba(242, 169, 59, 0.18);
+  border-bottom: 1px solid var(--gold-line);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
 }
 .topbar-inner {
@@ -20,9 +20,9 @@
 .brand-mark {
   width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
   background: radial-gradient(circle at 30% 20%, #3a2a1a, var(--ink) 70%);
-  border: 1px solid rgba(242, 169, 59, 0.45);
+  border: 1px solid var(--gold-line);
   font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--gold);
-  box-shadow: inset 0 0 12px rgba(242, 169, 59, 0.25);
+  box-shadow: inset 0 0 12px var(--gold-soft);
 }
 .brand-text { display: flex; flex-direction: column; line-height: 1; }
 .brand-title {
@@ -43,7 +43,7 @@
 .status-pill .phase-step { font-size: 12px; color: var(--ink-muted); white-space: nowrap; }
 .timer {
   display: inline-flex; align-items: center; gap: 6px; flex: none;
-  padding: 4px 12px; border-radius: 999px; background: rgba(242, 169, 59, 0.16); color: var(--gold-2);
+  padding: 4px 12px; border-radius: 999px; background: var(--gold-soft); color: var(--gold-2);
   font-family: var(--font-display); font-size: 18px; font-weight: 600; letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
 }
@@ -93,8 +93,7 @@
 .badge-danger { background: var(--danger-soft); color: var(--danger-strong); }
 .badge-warning { background: var(--warning-soft); color: var(--warning); }
 .badge-info { background: var(--info-soft); color: var(--info); }
-.badge-gold { background: rgba(242, 169, 59, 0.16); color: #a8620a; }
-@media (prefers-color-scheme: dark) { .badge-gold { color: var(--gold-2); } }
+.badge-gold { background: var(--gold-soft); color: var(--gold-text); }
 
 .code-badge {
   display: inline-grid; place-items: center; flex: none;
@@ -113,7 +112,7 @@
   background: radial-gradient(circle at 35% 30%, #ffe3a3, var(--gold) 55%, #b86e12);
   box-shadow: inset 0 0 0 1px rgba(120, 70, 10, 0.35);
 }
-@media (prefers-color-scheme: dark) { .coin { color: var(--gold-2); } }
+[data-mode='dark'] .coin { color: var(--gold-2); }
 
 /* ---------- Табы ---------- */
 .tabs {
@@ -196,7 +195,7 @@
 .callout-info { background: var(--info-soft); color: var(--info); }
 .callout-ember {
   background: linear-gradient(135deg, var(--ink) 0%, var(--ink-3) 100%); color: var(--ink-text);
-  border: 1px solid rgba(242, 169, 59, 0.3);
+  border: 1px solid var(--gold-line);
 }
 .callout-ember svg { color: var(--gold); }
 
@@ -268,7 +267,7 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 60px 16px; color: var(--muted); }
 .callout-danger { background: var(--danger-soft); color: var(--danger-strong); }
-@media (prefers-color-scheme: dark) {
+[data-mode='dark'] {
   .tab[aria-selected='true'], .tabs-pills .tab[aria-selected='true'] {
     background: var(--primary-soft); color: var(--primary-text); border-color: rgba(255, 122, 47, 0.35);
   }

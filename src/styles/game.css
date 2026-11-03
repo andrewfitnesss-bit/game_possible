@@ -289,7 +289,7 @@
 
 /* ---------- Шапка стола ---------- */
 .team-hero { gap: 16px; }
-.team-name { font-family: var(--font-display); font-size: 30px; text-transform: uppercase; letter-spacing: 0.02em; margin-top: 2px; }
+.team-name { font-family: var(--font-display); font-size: 30px; text-transform: var(--display-case); letter-spacing: 0.02em; margin-top: 2px; }
 .avatar-stack { display: flex; align-items: center; }
 .avatar-stack > span { margin-left: -8px; }
 .avatar-stack > span:first-child { margin-left: 0; }
@@ -314,3 +314,73 @@ fieldset.plain legend { padding: 0; margin-bottom: 10px; }
 .consult > p { margin-top: 10px; color: var(--ink-muted); }
 .consult-toggle { color: var(--gold); }
 .consult[open] .consult-toggle { display: none; }
+
+/* ---------- Карточка клиента: крестик поверх декоративного свечения ---------- */
+.client-hero::after { pointer-events: none; }
+.client-hero .hero-content { position: relative; z-index: 1; }
+
+/* ---------- Правила раунда в шапке ---------- */
+.status-wrap { position: relative; min-width: 0; max-width: 100%; display: flex; justify-content: center; }
+.status-pill { color: inherit; text-align: left; cursor: help; transition: background 0.15s, border-color 0.15s; }
+.status-pill:hover { background: rgba(255, 255, 255, 0.1); }
+.status-pill .phase-info { opacity: 0.55; flex: none; }
+.rules-pop {
+  position: absolute; top: calc(100% + 10px); left: 50%; transform: translateX(-50%); z-index: 60;
+  width: min(460px, calc(100vw - 24px)); display: none; flex-direction: column; gap: 10px;
+  padding: 16px 18px; border-radius: var(--radius-lg); background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); box-shadow: var(--shadow-lg); text-align: left; font-size: 14px;
+}
+.rules-pop::before {
+  content: ''; position: absolute; top: -7px; left: 50%; width: 12px; height: 12px; transform: translateX(-50%) rotate(45deg);
+  background: var(--surface); border-left: 1px solid var(--border); border-top: 1px solid var(--border);
+}
+.status-wrap:hover .rules-pop,
+.status-wrap:focus-within .rules-pop,
+.status-wrap.open .rules-pop { display: flex; animation: modal-in 0.15s var(--ease); }
+.rules-head { display: flex; flex-direction: column; gap: 4px; }
+.rules-head strong { font-size: 16px; }
+.rules-goal {
+  display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: var(--radius);
+  background: var(--primary-soft); color: var(--primary-text); font-weight: 600;
+}
+.rules-goal svg { flex: none; margin-top: 2px; }
+.rules-pop ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; color: var(--text-2); }
+@media (max-width: 640px) {
+  .status-wrap { position: static; }
+  .rules-pop { position: fixed; top: calc(var(--topbar-h) + 8px); left: 12px; right: 12px; width: auto; transform: none; }
+  .rules-pop::before { display: none; }
+}
+
+/* ---------- Меню игрока ---------- */
+.user-chip { color: inherit; padding: 4px 8px 4px 12px; border-radius: 999px; transition: background 0.15s; }
+.user-chip:hover { background: rgba(255, 255, 255, 0.08); }
+.user-chip .chev { color: var(--ink-muted); }
+.login-tools { position: absolute; top: 16px; right: 16px; z-index: 2; }
+.login-prefs { color: var(--ink-text); border: 1px solid rgba(255, 255, 255, 0.15); }
+.login-prefs:hover { background: rgba(255, 255, 255, 0.1); color: #fff; }
+
+/* ---------- Что осталось сделать ---------- */
+.todo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; padding-top: 4px; }
+.todo-item { padding: 4px 10px; border-radius: 999px; font-size: 13px; font-weight: 600; background: var(--warning-soft); color: var(--warning); }
+.todo.done { color: var(--success); font-weight: 600; font-size: 14px; }
+.callout-warning { background: var(--warning-soft); color: var(--warning); border: 1px solid color-mix(in srgb, var(--warning) 25%, transparent); }
+.lane.pool.pending { border-color: color-mix(in srgb, var(--warning) 45%, transparent); border-top: 3px solid var(--warning); }
+
+/* ---------- Прогресс столов в админке ---------- */
+.progress-list { display: flex; flex-direction: column; gap: 8px; }
+.progress-row {
+  display: grid; grid-template-columns: minmax(140px, 220px) minmax(180px, 1fr) minmax(0, 1.4fr); gap: 16px; align-items: center;
+  padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface);
+}
+.progress-row.lagging { border-color: color-mix(in srgb, var(--danger-strong) 45%, transparent); background: var(--danger-soft); }
+.progress-row.done { border-color: color-mix(in srgb, var(--success) 40%, transparent); }
+.progress-name { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; min-width: 0; }
+.progress-bar { display: flex; align-items: center; gap: 10px; }
+.progress-bar .bar { flex: 1; }
+.bar.big { height: 10px; }
+.progress-pct { width: 48px; text-align: right; font-weight: 700; font-size: 16px; }
+.progress-steps { display: flex; flex-wrap: wrap; gap: 6px; }
+.step-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px; font-size: 12px; background: var(--sunken); color: var(--text-2); }
+.step-chip.ok { background: var(--success-soft); color: var(--success); }
+.live-dot::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; animation: pulse 1.6s ease-in-out infinite; }
+@media (max-width: 900px) { .progress-row { grid-template-columns: 1fr; gap: 8px; } }

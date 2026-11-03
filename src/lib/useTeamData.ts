@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { errText } from './errors';
+import { settingsOf, type TeamState } from './game';
 import { supabase } from './supabase';
 import type {
   CatalogItem,
@@ -29,6 +30,19 @@ export interface TeamData {
   purchases: Purchase[];
   hqRequests: HqRequest[];
   meetings: MeetingResult[];
+}
+
+export function teamState(d: TeamData): TeamState {
+  return {
+    clients: d.clients,
+    catalog: d.catalog,
+    placements: d.placements,
+    kams: d.kams,
+    purchases: d.purchases,
+    meetings: d.meetings,
+    members: d.members,
+    settings: settingsOf(d.game),
+  };
 }
 
 const TEAM_TABLES = ['placements', 'team_kams', 'purchases', 'hq_requests', 'meeting_results', 'profiles'] as const;

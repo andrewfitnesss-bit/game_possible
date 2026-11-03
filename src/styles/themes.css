@@ -1,0 +1,48 @@
+/* Корпоративная B2B-тема: светлая шапка, бирюзовые акценты, строгая типографика без капса. */
+[data-theme='corp'] .topbar { background: var(--surface); color: var(--text); border-bottom: 1px solid var(--border); box-shadow: var(--shadow-sm); }
+[data-theme='corp'] .brand-mark { background: var(--primary); border-color: transparent; color: var(--on-primary); box-shadow: none; font-family: var(--font); border-radius: 8px; }
+[data-theme='corp'] .brand-title {
+  background: none; color: var(--text); -webkit-text-fill-color: currentColor;
+  font-family: var(--font); font-size: 16px; letter-spacing: 0.02em;
+}
+[data-theme='corp'] .brand-sub { color: var(--muted); }
+[data-theme='corp'] .status-pill { background: var(--sunken); border-color: var(--border); }
+[data-theme='corp'] .status-pill:hover { background: var(--border); }
+[data-theme='corp'] .status-pill .phase-step { color: var(--muted); }
+[data-theme='corp'] .timer { background: var(--primary-soft); color: var(--primary-text); font-family: var(--font); font-size: 16px; font-weight: 700; }
+[data-theme='corp'] .timer.urgent { background: var(--danger-soft); color: var(--danger-strong); }
+[data-theme='corp'] .timer.done { background: var(--sunken); color: var(--muted); }
+[data-theme='corp'] .topbar .btn-ghost,
+[data-theme='corp'] .user-chip .chev { color: var(--muted); }
+[data-theme='corp'] .user-chip:hover { background: var(--sunken); }
+[data-theme='corp'] .user-chip .role { color: var(--primary-text); }
+
+[data-theme='corp'] .tab[aria-selected='true'],
+[data-theme='corp'] .tabs-pills .tab[aria-selected='true'] { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+[data-theme='corp'] .tab[aria-selected='true'] svg { color: var(--on-primary); }
+
+[data-theme='corp'] .team-name { font-weight: 700; font-size: 26px; }
+[data-theme='corp'] .lane-icon { background: var(--primary-soft); color: var(--primary-text); font-family: var(--font); font-weight: 700; }
+[data-theme='corp'] .lane-icon.mm { background: #e7eefc; color: #3b5bdb; }
+[data-theme='corp'][data-mode='dark'] .lane-icon.mm { background: #1a2340; color: #91a7ff; }
+[data-theme='corp'] .code-badge,
+[data-theme='corp'] .item-code { font-family: var(--font); font-weight: 700; font-size: 12px; border-radius: 4px; box-shadow: none; letter-spacing: 0; }
+[data-theme='corp'] .ssm-tag { background: var(--primary); color: var(--on-primary); }
+[data-theme='corp'] .btn-primary { box-shadow: none; }
+[data-theme='corp'] .chip.overlay { transform: none; }
+[data-theme='corp'] .zone-active { border-top-color: var(--primary); }
+[data-theme='corp'] .zone-maint { border-top-color: #7b878e; }
+[data-theme='corp'] .client-hero { background: linear-gradient(135deg, var(--ink) 0%, var(--ink-3) 70%, var(--v) 260%); }
+
+[data-theme='corp'] .login {
+  background:
+    radial-gradient(900px 520px at 85% 110%, rgba(0, 168, 142, 0.35), transparent 60%),
+    linear-gradient(135deg, #12181b 0%, #1d2327 55%, #13302b 100%);
+}
+[data-theme='corp'] .login-title {
+  background: none; color: #fff; -webkit-text-fill-color: #fff; filter: none;
+  font-family: var(--font); font-weight: 800; letter-spacing: -0.03em; text-transform: none; line-height: 1;
+}
+[data-theme='corp'] .login-sub { font-family: var(--font); color: var(--gold-2); letter-spacing: 0.24em; font-size: 14px; }
+[data-theme='corp'] .login-kicker { color: var(--gold-2); }
+[data-theme='corp'] .waiting-icon { background: var(--primary-soft); color: var(--primary-text); }

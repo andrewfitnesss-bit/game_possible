@@ -1,5 +1,5 @@
-import { Building, Check, Megaphone, Sparkles, Undo2, X } from 'lucide-react';
-import { STATUS_LABEL } from '../../lib/game';
+import { Building, Megaphone, Sparkles, Undo2 } from 'lucide-react';
+import { useT, type T, type TKey } from '../../i18n/prefs';
 import { verticalStyle } from '../../lib/verticals';
 import type { CatalogItem, HqRequest, Purchase } from '../../lib/types';
 import { useConfirm } from '../../ui/Confirm';
@@ -8,7 +8,7 @@ import type { WorkspaceActions } from './actions';
 
 const CATEGORY_ICON = { info: Sparkles, marketing: Megaphone, hq: Building } as const;
 const STATUS_BADGE = {
-  pending: 'badge badge-warning',
+  pending: 'badge',
   approved: 'badge badge-success',
   rejected: 'badge badge-danger',
   cancelled: 'badge badge-danger',
@@ -21,38 +21,27 @@ interface Props {
   staff: boolean;
   busy: boolean;
   actions: WorkspaceActions;
-  emptyText?: string;
 }
 
-export function itemTitle(p: Purchase, catalog: CatalogItem[], requests: HqRequest[]): string {
-  if (p.item === 'REQ') return `Запрос к HQ: ${requests.find((r) => r.id === p.request_id)?.title ?? `#${p.request_id}`}`;
+export function itemTitle(p: Purchase, catalog: CatalogItem[], requests: HqRequest[], t: T): string {
+  if (p.item === 'REQ') return t('history.request', { title: requests.find((r) => r.id === p.request_id)?.title ?? `#${p.request_id}` });
   const item = catalog.find((i) => i.code === p.item);
   if (!item) return p.item;
   return item.category === 'info' ? item.name : `${item.code} · ${item.name}`;
 }
 
-export function PurchaseHistory({ purchases, catalog, requests, staff, busy, actions, emptyText }: Props) {
+export function PurchaseHistory({ purchases, catalog, requests, staff, busy, actions }: Props) {
+  const t = useT();
   const ask = useConfirm();
 
-  if (purchases.length === 0) return <Empty title={emptyText ?? 'Покупок пока нет'} />;
-
-  async function reject(p: Purchase) {
-    const note = await ask({
-      title: 'Отклонить заявку?',
-      message: itemTitle(p, catalog, requests),
-      input: { label: 'Причина', placeholder: 'Например: не подходит к выбранным клиентам' },
-      confirmLabel: 'Отклонить',
-      danger: true,
-    });
-    if (note !== null) void actions.decidePurchase(p.id, false, note);
-  }
+  if (purchases.length === 0) return <Empty title={t('shop.noPurchases')} />;
 
   async function cancel(p: Purchase) {
     const note = await ask({
-      title: 'Отменить покупку?',
-      message: `${itemTitle(p, catalog, requests)} — монеты вернутся в бюджет команды.`,
-      input: { label: 'Причина (попадёт в аудит)', placeholder: 'Ошибка регистрации', required: true },
-      confirmLabel: 'Отменить покупку',
+      title: t('history.cancelTitle'),
+      message: t('history.cancelText', { item: itemTitle(p, catalog, requests, t) }),
+      input: { label: t('history.cancelReason'), placeholder: t('history.cancelPh'), required: true },
+      confirmLabel: t('history.cancel'),
       danger: true,
     });
     if (note !== null) void actions.cancelPurchase(p.id, note);
@@ -62,49 +51,35 @@ export function PurchaseHistory({ purchases, catalog, requests, staff, busy, act
     <div className="pur-list">
       {purchases.map((p) => {
         const Icon = CATEGORY_ICON[p.category];
-        const dim = p.status === 'rejected' || p.status === 'cancelled';
+        const dim = p.status !== 'approved';
         return (
-          <article key={p.id} className={`pur${p.status === 'pending' ? ' pending' : ''}${dim ? ' dim' : ''}`}>
+          <article key={p.id} className={dim ? 'pur dim' : 'pur'}>
             <span className="pur-icon">
               <Icon size={18} />
             </span>
             <div>
-              <div className="pur-title">{itemTitle(p, catalog, requests)}</div>
+              <div className="pur-title">{itemTitle(p, catalog, requests, t)}</div>
               {p.justification && <div className="pur-just">{p.justification}</div>}
               {p.targets.length > 0 && (
                 <div className="targets-line">
-                  {p.targets.map((t) => (
-                    <span key={t} className="code-badge" style={verticalStyle(t)}>
-                      {t}
+                  {p.targets.map((code) => (
+                    <span key={code} className="code-badge" style={verticalStyle(code)}>
+                      {code}
                     </span>
                   ))}
                 </div>
               )}
-              {p.note && <div className="muted xsmall">Комментарий: {p.note}</div>}
+              {p.note && <div className="muted xsmall">{t('history.comment', { note: p.note })}</div>}
             </div>
             <div className="pur-side">
               <div className="row">
                 <span className="coin">{p.cost}</span>
-                <span className={STATUS_BADGE[p.status]}>{STATUS_LABEL[p.status]}</span>
+                <span className={STATUS_BADGE[p.status]}>{t(`status.${p.status}` as TKey)}</span>
               </div>
-              {staff && (
-                <div className="pur-actions">
-                  {p.status === 'pending' && (
-                    <>
-                      <button type="button" className="btn btn-success btn-xs" disabled={busy} onClick={() => void actions.decidePurchase(p.id, true, '')}>
-                        <Check size={14} /> Провести
-                      </button>
-                      <button type="button" className="btn btn-secondary btn-xs" disabled={busy} onClick={() => void reject(p)}>
-                        <X size={14} /> Отклонить
-                      </button>
-                    </>
-                  )}
-                  {p.status === 'approved' && (
-                    <button type="button" className="btn btn-ghost btn-xs" disabled={busy} onClick={() => void cancel(p)}>
-                      <Undo2 size={14} /> Отменить
-                    </button>
-                  )}
-                </div>
+              {staff && p.status === 'approved' && (
+                <button type="button" className="btn btn-ghost btn-xs" disabled={busy} onClick={() => void cancel(p)}>
+                  <Undo2 size={14} /> {t('history.cancel')}
+                </button>
               )}
             </div>
           </article>

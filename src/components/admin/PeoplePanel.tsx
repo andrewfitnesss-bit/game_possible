@@ -11,17 +11,14 @@ import {
   type DragEndEvent,
 } from '@dnd-kit/core';
 import { Crown, Hourglass, Plus, Shuffle, Trash2, UserCog, Users } from 'lucide-react';
+import { useT, type TKey } from '../../i18n/prefs';
 import type { Profile, Role, Team } from '../../lib/types';
 import { useConfirm } from '../../ui/Confirm';
 import { Avatar, Stat } from '../../ui/kit';
 
 const UNASSIGNED = 'unassigned';
 
-const ROLE_OPTIONS: { id: Role; label: string }[] = [
-  { id: 'member', label: 'Участник' },
-  { id: 'captain', label: 'Капитан' },
-  { id: 'curator', label: 'Куратор' },
-];
+const ROLES: Role[] = ['member', 'captain', 'curator'];
 
 interface Props {
   teams: Team[];
@@ -35,6 +32,7 @@ interface Props {
 }
 
 function PersonBody({ person, onRole }: { person: Profile; onRole?: (role: Role) => void }) {
+  const t = useT();
   const name = person.full_name || person.username;
   return (
     <>
@@ -49,16 +47,16 @@ function PersonBody({ person, onRole }: { person: Profile; onRole?: (role: Role)
           value={person.role}
           onChange={(e) => onRole(e.target.value as Role)}
           onPointerDown={(e) => e.stopPropagation()}
-          aria-label={`Роль: ${name}`}
+          aria-label={t('people.roleAria', { name })}
         >
-          {ROLE_OPTIONS.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.label}
+          {ROLES.map((r) => (
+            <option key={r} value={r}>
+              {t(`role.${r}` as TKey)}
             </option>
           ))}
         </select>
       ) : (
-        <span className={`role-select ${person.role}`}>{ROLE_OPTIONS.find((r) => r.id === person.role)?.label}</span>
+        <span className={`role-select ${person.role}`}>{t(`role.${person.role}` as TKey)}</span>
       )}
     </>
   );
@@ -91,6 +89,7 @@ function TeamLane({ id, title, icon, count, extra, children }: { id: string; tit
 }
 
 export function PeoplePanel({ teams, people, busy, onMove, onRole, onAddTeam, onRemoveTeam, onSplit }: Props) {
+  const t = useT();
   const ask = useConfirm();
   const [newTeam, setNewTeam] = useState('');
   const [dragging, setDragging] = useState<string | null>(null);
@@ -128,22 +127,18 @@ export function PeoplePanel({ teams, people, busy, onMove, onRole, onAddTeam, on
   }
 
   async function split() {
-    const ok = await ask({
-      title: 'Разделить поровну?',
-      message: 'Все участники и капитаны будут случайно распределены по столам поровну. Кураторы останутся на своих местах.',
-      confirmLabel: 'Разделить',
-    });
+    const ok = await ask({ title: t('people.splitTitle'), message: t('people.splitText'), confirmLabel: t('people.split') });
     if (ok !== null) onSplit();
   }
 
-  async function removeTeam(t: Team) {
+  async function removeTeam(team: Team) {
     const ok = await ask({
-      title: `Удалить стол «${t.name}»?`,
-      message: 'Участники стола вернутся в список ожидания. Доска и покупки стола будут удалены.',
-      confirmLabel: 'Удалить',
+      title: t('people.removeTitle', { name: team.name }),
+      message: t('people.removeText'),
+      confirmLabel: t('common.delete'),
       danger: true,
     });
-    if (ok !== null) onRemoveTeam(t);
+    if (ok !== null) onRemoveTeam(team);
   }
 
   const lanePeople = (list: Profile[]) =>
@@ -154,16 +149,16 @@ export function PeoplePanel({ teams, people, busy, onMove, onRole, onAddTeam, on
         ))}
       </div>
     ) : (
-      <div className="slot-empty">перетащите сюда</div>
+      <div className="slot-empty">{t('people.dropHere')}</div>
     );
 
   return (
     <div className="stack-lg">
       <div className="stats">
-        <Stat label="Игроков" icon={<Users />} value={players.length} />
-        <Stat label="Ждут стола" icon={<Hourglass />} value={waiting.length} />
-        <Stat label="Капитанов" icon={<Crown />} value={people.filter((p) => p.role === 'captain').length} />
-        <Stat label="Кураторов" icon={<UserCog />} value={people.filter((p) => p.role === 'curator').length} />
+        <Stat label={t('people.players')} icon={<Users />} value={players.length} />
+        <Stat label={t('people.waiting')} icon={<Hourglass />} value={waiting.length} />
+        <Stat label={t('people.captains')} icon={<Crown />} value={people.filter((p) => p.role === 'captain').length} />
+        <Stat label={t('people.curators')} icon={<UserCog />} value={people.filter((p) => p.role === 'curator').length} />
       </div>
 
       <section className="card">
@@ -171,42 +166,42 @@ export function PeoplePanel({ teams, people, busy, onMove, onRole, onAddTeam, on
           <div className="card-title">
             <Users size={20} />
             <div>
-              <h2>Распределение по столам</h2>
-              <div className="card-sub">Перетаскивайте людей между столами, роль выбирается на карточке</div>
+              <h2>{t('people.title')}</h2>
+              <div className="card-sub">{t('people.sub')}</div>
             </div>
           </div>
           <div className="row">
             <form className="row" onSubmit={addTeam}>
-              <input className="input select-sm team-input" value={newTeam} onChange={(e) => setNewTeam(e.target.value)} placeholder="Название стола" maxLength={100} aria-label="Название стола" />
+              <input className="input select-sm team-input" value={newTeam} onChange={(e) => setNewTeam(e.target.value)} placeholder={t('people.tablePh')} maxLength={100} aria-label={t('people.tablePh')} />
               <button type="submit" className="btn btn-secondary btn-sm" disabled={busy || !newTeam.trim()}>
-                <Plus size={16} /> Стол
+                <Plus size={16} /> {t('people.addTable')}
               </button>
             </form>
             <button type="button" className="btn btn-primary btn-sm" onClick={() => void split()} disabled={busy || teams.length === 0 || players.length === 0}>
-              <Shuffle size={16} /> Разделить поровну
+              <Shuffle size={16} /> {t('people.split')}
             </button>
           </div>
         </div>
 
         <DndContext sensors={sensors} onDragStart={(e) => setDragging(String(e.active.id))} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
           <div className="team-board">
-            <TeamLane id={UNASSIGNED} title="Ожидают назначения" icon={<Hourglass size={16} />} count={waiting.length}>
+            <TeamLane id={UNASSIGNED} title={t('people.waitingLane')} icon={<Hourglass size={16} />} count={waiting.length}>
               {lanePeople(waiting)}
             </TeamLane>
-            {teams.map((t, i) => (
+            {teams.map((team, i) => (
               <TeamLane
-                key={t.id}
-                id={t.id}
-                title={t.name}
+                key={team.id}
+                id={team.id}
+                title={team.name}
                 icon={i + 1}
-                count={byTeam.get(t.id)?.length ?? 0}
+                count={byTeam.get(team.id)?.length ?? 0}
                 extra={
-                  <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => void removeTeam(t)} aria-label={`Удалить стол ${t.name}`}>
+                  <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => void removeTeam(team)} aria-label={t('people.removeAria', { name: team.name })}>
                     <Trash2 size={16} />
                   </button>
                 }
               >
-                {lanePeople(byTeam.get(t.id) ?? [])}
+                {lanePeople(byTeam.get(team.id) ?? [])}
               </TeamLane>
             ))}
           </div>

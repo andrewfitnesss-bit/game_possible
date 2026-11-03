@@ -1,5 +1,6 @@
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { useT } from '../i18n/prefs';
 
 interface Props {
   title?: ReactNode;
@@ -14,6 +15,7 @@ interface Props {
 
 // Модальное окно на нативном <dialog>: фокус, Esc и подложка из коробки. На телефоне — нижний лист.
 export function Modal({ title, subtitle, header, footer, width, onClose, children }: Props) {
+  const t = useT();
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -36,7 +38,7 @@ export function Modal({ title, subtitle, header, footer, width, onClose, childre
               {title && <h2>{title}</h2>}
               {subtitle && <div className="card-sub">{subtitle}</div>}
             </div>
-            <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => ref.current?.close()} aria-label="Закрыть">
+            <button type="button" className="btn btn-ghost btn-icon btn-sm" onClick={() => ref.current?.close()} aria-label={t('common.close')}>
               <X size={18} />
             </button>
           </div>
