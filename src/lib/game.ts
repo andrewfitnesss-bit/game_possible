@@ -213,7 +213,7 @@ export interface StageProgress {
   steps: ProgressStep[];
 }
 
-// Прогресс текущего этапа стола — ведущая видит, кто отстаёт, а команда — что осталось сделать.
+// Прогресс текущего этапа стола — ведущий видит, кто отстаёт, а команда — что осталось сделать.
 export function stageProgress(phase: Phase, st: TeamState): StageProgress {
   const s = st.settings;
   const inGame = st.clients.filter((c) => c.in_game).length;

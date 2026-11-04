@@ -261,6 +261,7 @@ export function ShopPanel({ data, settings, spend, phase, staff, captain, busy, 
         <PurchaseDialog
           option={selected}
           clients={inGame}
+          placements={data.placements}
           spend={spend}
           settings={settings}
           staff={staff}

@@ -41,12 +41,14 @@ interface Props {
   settings: GameSettings;
   canEdit: boolean;
   canSpec: boolean;
+  /** Подсказка над нераспределёнными, когда раскладывать нельзя (лобби, роль). */
+  viewHint: string;
   onMove: (client: string, bucket: Bucket | null, kam: number | null, ssm: number | null) => Promise<boolean>;
   onSpec: (kam: number, spec: Specialization | null) => void;
   onOpen: (client: Client) => void;
 }
 
-export function TeamBoard({ clients, placements, kams, purchases, settings, canEdit, canSpec, onMove, onSpec, onOpen }: Props) {
+export function TeamBoard({ clients, placements, kams, purchases, settings, canEdit, canSpec, viewHint, onMove, onSpec, onOpen }: Props) {
   const t = useT();
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
@@ -179,7 +181,7 @@ export function TeamBoard({ clients, placements, kams, purchases, settings, canE
               </span>
               <div className="grow">
                 <h3>{t('board.pool')}</h3>
-                <span className="muted xsmall">{canEdit ? t('board.poolHintEdit') : t('board.poolHintView')}</span>
+                <span className="muted xsmall">{canEdit ? t('board.poolHintEdit') : viewHint}</span>
               </div>
               <span className={poolClients.length ? 'badge badge-warning' : 'badge badge-success'}>{poolClients.length}</span>
             </div>

@@ -1,107 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Activity, CircleCheck, Lightbulb, RefreshCw, Trophy, TriangleAlert } from 'lucide-react';
 import { useT, type TKey } from '../../i18n/prefs';
-import { settingsOf, spendOf, stageProgress, type StageProgress } from '../../lib/game';
-import { errText } from '../../lib/errors';
-import { supabase } from '../../lib/supabase';
+import { spendOf } from '../../lib/game';
+import { isLagging, useTablesProgress } from '../../lib/useTablesProgress';
 import { verticalStyle } from '../../lib/verticals';
-import type { Client, Game, HqRequest, MeetingResult, Placement, Profile, Purchase, SpecTraining, Team, TeamKam } from '../../lib/types';
+import type { Game, Team } from '../../lib/types';
 import { Empty, money } from '../../ui/kit';
-
-interface AllData {
-  clients: Client[];
-  members: Profile[];
-  placements: Placement[];
-  kams: TeamKam[];
-  trainings: SpecTraining[];
-  purchases: Purchase[];
-  meetings: MeetingResult[];
-  requests: HqRequest[];
-}
-
-const LIVE_TABLES = ['placements', 'team_kams', 'spec_trainings', 'purchases', 'meeting_results', 'hq_requests', 'profiles'] as const;
 
 // Сводка по всем столам: прогресс текущего этапа (кто отстаёт), состояние и запросы к HQ.
 export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
   const t = useT();
-  const [data, setData] = useState<AllData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const load = useCallback(async () => {
-    const ids = teams.map((x) => x.id);
-    if (ids.length === 0) {
-      setData({ clients: [], members: [], placements: [], kams: [], trainings: [], purchases: [], meetings: [], requests: [] });
-      return;
-    }
-    const [c, pr, p, k, st, pu, m, r] = await Promise.all([
-      supabase.from('clients').select('*'),
-      supabase.from('profiles').select('*').in('team_id', ids),
-      supabase.from('placements').select('*').in('team_id', ids),
-      supabase.from('team_kams').select('*').in('team_id', ids),
-      supabase.from('spec_trainings').select('*').in('team_id', ids),
-      supabase.from('purchases').select('*').in('team_id', ids),
-      supabase.from('meeting_results').select('*').in('team_id', ids),
-      supabase.from('hq_requests').select('*').in('team_id', ids).order('title'),
-    ]);
-    const failed = [c, pr, p, k, st, pu, m, r].find((x) => x.error);
-    if (failed?.error) {
-      setError(errText(failed.error, t));
-      return;
-    }
-    setError(null);
-    setData({
-      clients: (c.data ?? []) as Client[],
-      members: (pr.data ?? []) as Profile[],
-      placements: (p.data ?? []) as Placement[],
-      kams: (k.data ?? []) as TeamKam[],
-      trainings: (st.data ?? []) as SpecTraining[],
-      purchases: (pu.data ?? []) as Purchase[],
-      meetings: (m.data ?? []) as MeetingResult[],
-      requests: (r.data ?? []) as HqRequest[],
-    });
-  }, [teams, t]);
-
-  // Живое обновление: ведущая видит прогресс столов без перезагрузки.
-  useEffect(() => {
-    void load();
-    const schedule = () => {
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => void load(), 400);
-    };
-    let channel = supabase.channel('admin-overview');
-    for (const table of LIVE_TABLES) channel = channel.on('postgres_changes', { event: '*', schema: 'public', table }, schedule);
-    channel.subscribe();
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-      void supabase.removeChannel(channel);
-    };
-  }, [load]);
-
-  const settings = useMemo(() => settingsOf(game), [game]);
+  // Живое обновление: ведущий видит прогресс столов без перезагрузки.
+  const { data, rows, avg, settings, error, reload: load } = useTablesProgress(game, teams, 'admin-overview');
   const teamName = (id: string) => teams.find((x) => x.id === id)?.name ?? '—';
-
-  const rows = useMemo(() => {
-    if (!data) return [];
-    const list = teams.map((team) => {
-      const of = <T extends { team_id: string | null }>(arr: T[]) => arr.filter((x) => x.team_id === team.id);
-      const state = {
-        clients: data.clients,
-        catalog: [],
-        placements: of(data.placements),
-        kams: of(data.kams),
-        trainings: of(data.trainings),
-        purchases: of(data.purchases),
-        meetings: of(data.meetings),
-        members: of(data.members),
-        settings,
-      };
-      return { team, state, progress: stageProgress(game.phase, state) as StageProgress };
-    });
-    return list.sort((a, b) => a.progress.percent - b.progress.percent);
-  }, [data, teams, game.phase, settings]);
-
-  const avg = rows.length ? rows.reduce((s, r) => s + r.progress.percent, 0) / rows.length : 0;
 
   return (
     <>
@@ -126,8 +36,9 @@ export function Overview({ game, teams }: { game: Game; teams: Team[] }) {
           <Empty title={t('admin.noTables')}>{t('admin.noTablesText')}</Empty>
         ) : (
           <div className="progress-list">
-            {rows.map(({ team, progress }) => {
-              const lagging = rows.length > 1 && progress.percent < 100 && progress.percent < avg - 15;
+            {rows.map((row) => {
+              const { team, progress } = row;
+              const lagging = isLagging(row, avg, rows.length);
               const done = progress.percent >= 100;
               return (
                 <article key={team.id} className={`progress-row${lagging ? ' lagging' : ''}${done ? ' done' : ''}`}>

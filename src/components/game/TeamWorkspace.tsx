@@ -241,6 +241,7 @@ export function TeamWorkspace({ teamId, mode }: { teamId: string; mode: Workspac
           settings={settings}
           canEdit={canBoard}
           canSpec={canSpec}
+          viewHint={phase === 'lobby' ? t('board.lobbyHint') : t('board.poolHintView')}
           onOpen={(c) => setOpenCode(c.code)}
           onMove={(client, bucket, kam, ssm) => call('set_placement', { p_team: teamId, p_client: client, p_bucket: bucket ?? 'pool', p_kam: kam, p_ssm: ssm })}
           onSpec={(kam, spec) => void changeSpec(kam, spec)}

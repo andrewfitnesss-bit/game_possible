@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, Flag, LayoutGrid, Rocket, ScrollText, UserRoundPlus, Users } from 'lucide-react';
+import { Activity, Flag, LayoutGrid, MonitorPlay, Rocket, ScrollText, UserRoundPlus, Users } from 'lucide-react';
 import { AuditSection } from '../components/AuditSection';
 import { GameControl } from '../components/admin/GameControl';
 import { NewGameDialog, type StartMode } from '../components/admin/NewGameDialog';
@@ -7,6 +7,7 @@ import { Overview } from '../components/admin/Overview';
 import { PeoplePanel } from '../components/admin/PeoplePanel';
 import { TeamWorkspace } from '../components/game/TeamWorkspace';
 import { useT } from '../i18n/prefs';
+import { openProjector } from './ProjectorPage';
 import { errText } from '../lib/errors';
 import { supabase } from '../lib/supabase';
 import type { Game, Profile, Role, Team } from '../lib/types';
@@ -161,10 +162,18 @@ export function AdminPage() {
             <h1 className="team-name">{game ? game.name : t('admin.noGame')}</h1>
             <div className="card-sub">{game ? t('admin.stats', { teams: teams.length, people: people.length }) : t('admin.createHint')}</div>
           </div>
-          <button type="button" className={game ? 'btn btn-secondary' : 'btn btn-primary'} disabled={busy} onClick={() => setCreating(true)}>
-            <Rocket size={16} />
-            {game ? t('admin.newGame') : t('admin.start')}
-          </button>
+          <div className="row">
+            {game && (
+              <button type="button" className="btn btn-secondary" onClick={openProjector} title={t('proj.openHint')}>
+                <MonitorPlay size={16} />
+                {t('proj.open')}
+              </button>
+            )}
+            <button type="button" className={game ? 'btn btn-secondary' : 'btn btn-primary'} disabled={busy} onClick={() => setCreating(true)}>
+              <Rocket size={16} />
+              {game ? t('admin.newGame') : t('admin.start')}
+            </button>
+          </div>
         </div>
       </section>
 
