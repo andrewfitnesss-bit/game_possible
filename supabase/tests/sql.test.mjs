@@ -88,6 +88,7 @@ await expectOk('set_my_prefs', mem, `select public.set_my_prefs('{"theme":"corp"
 const prefs = (await db.query(`select prefs from profiles where id = $1`, [mem])).rows[0].prefs;
 check('prefs saved', prefs.theme === 'corp' && prefs.lang === 'en' && prefs.mode === 'dark', JSON.stringify(prefs));
 await expectErr('invalid prefs', mem, `select public.set_my_prefs('{"lang":"de"}')`, [], 'E_PREFS');
+await expectOk('wallst theme allowed', mem, `select public.set_my_prefs('{"theme":"wallst"}')`);
 
 console.log('Доска');
 const place = (client, bucket, kam, ssm = null, uid = cap) =>

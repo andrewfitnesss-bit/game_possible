@@ -4,6 +4,7 @@ import { useAuth } from '../auth';
 import { prefsEntries } from '../components/layout/AppShell';
 import { usePrefs, type TKey } from '../i18n/prefs';
 import { Menu } from '../ui/Menu';
+import { MoneyRain } from '../ui/MoneyRain';
 
 type Mode = 'login' | 'register';
 
@@ -40,6 +41,7 @@ export function LoginPage() {
 
   return (
     <div className="login">
+      <MoneyRain ambient />
       <div className="login-tools">
         <Menu
           label={t('shell.menu')}
@@ -54,13 +56,13 @@ export function LoginPage() {
       </div>
 
       <section className="login-hero">
-        <span className="login-kicker">{t('login.kicker')}</span>
+        <span className="login-kicker">{prefs.theme === 'wallst' ? t('login.kickerWallst') : t('login.kicker')}</span>
         <h1 className="login-title">
           The NAL
           <br />
           Games
         </h1>
-        <p className="login-sub">{t('login.sub')}</p>
+        <p className="login-sub">{prefs.theme === 'wallst' ? t('login.subWallst') : t('login.sub')}</p>
         <div className="login-points">
           <span>
             <Target /> {t('login.point1')}

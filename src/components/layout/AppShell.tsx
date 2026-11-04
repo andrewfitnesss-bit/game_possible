@@ -6,10 +6,13 @@ import { PHASES, PLAYABLE_PHASES, settingsOf } from '../../lib/game';
 import { formatLeft, useCountdown, useGame } from '../../lib/useGame';
 import type { Game } from '../../lib/types';
 import { Avatar } from '../../ui/kit';
+import { MoneyRain } from '../../ui/MoneyRain';
+import { Ticker } from './Ticker';
 import { Menu, type MenuEntry } from '../../ui/Menu';
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { profile } = useAuth();
+  const { theme } = usePrefs();
   const game = useGame(profile?.game_id ?? null);
 
   return (
@@ -20,18 +23,21 @@ export function AppShell({ children }: { children: ReactNode }) {
           <div className="game-status">{game && <GameStatus game={game} />}</div>
           <UserMenu />
         </div>
+        {theme === 'wallst' && <Ticker />}
       </header>
       <main className="page">{children}</main>
+      <MoneyRain />
       <footer className="footer">The NAL Games · v{__APP_VERSION__}</footer>
     </div>
   );
 }
 
 export function Brand() {
+  const { theme } = usePrefs();
   return (
     <div className="brand">
       <span className="brand-mark" aria-hidden>
-        N
+        {theme === 'wallst' ? '🐺' : 'N'}
       </span>
       <span className="brand-text">
         <span className="brand-title">The NAL Games</span>
@@ -46,6 +52,7 @@ export function prefsEntries(t: T, prefs: { theme: Theme; mode: Mode; lang: Lang
   const themes: [Theme, TKey][] = [
     ['arena', 'shell.themeArena'],
     ['corp', 'shell.themeCorp'],
+    ['wallst', 'shell.themeWallst'],
   ];
   const modes: [Mode, TKey, ReactNode][] = [
     ['light', 'shell.modeLight', <Sun size={16} key="l" />],

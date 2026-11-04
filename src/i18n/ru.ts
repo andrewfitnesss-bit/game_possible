@@ -32,6 +32,7 @@ export const ru = {
   'shell.theme': 'Оформление',
   'shell.themeArena': 'Арена — NAL Games',
   'shell.themeCorp': 'Корпоративное B2B',
+  'shell.themeWallst': 'Уолл-стрит 90-х 🐺',
   'shell.mode': 'Режим',
   'shell.modeLight': 'Светлый',
   'shell.modeDark': 'Тёмный',
@@ -41,6 +42,13 @@ export const ru = {
 
   // Вход
   'login.kicker': 'Megaland · 2027',
+  'login.kickerWallst': 'NAL & Partners · брокеры с 1989',
+  'login.subWallst': 'Продай клиенту мечту',
+  'ticker.s1': 'КЛИЕНТ ЖДЁТ — ЗВОНИ!',
+  'ticker.s2': 'ЗАКРЫВАЙ СДЕЛКУ',
+  'ticker.s3': 'ОБЪЁМ — ЭТО ВСЁ',
+  'ticker.s4': 'ШАМПАНСКОЕ ЗА СЧЁТ HQ',
+  'ticker.s5': 'NAL · ПОКУПАЙ! ПОКУПАЙ! ПОКУПАЙ!',
   'login.sub': 'Mission: Possible',
   'login.point1': 'Портфель клиентов',
   'login.point2': 'KAM и SSM',

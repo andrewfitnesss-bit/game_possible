@@ -5,7 +5,7 @@ import { en } from './en';
 import { ru, type Dict } from './ru';
 
 export type Lang = 'ru' | 'en';
-export type Theme = 'arena' | 'corp';
+export type Theme = 'arena' | 'corp' | 'wallst';
 export type Mode = 'light' | 'dark' | 'system';
 
 export interface Prefs {
@@ -26,7 +26,7 @@ function sanitize(raw: unknown): Prefs {
   const p = (raw && typeof raw === 'object' ? raw : {}) as Partial<Record<keyof Prefs, unknown>>;
   return {
     lang: p.lang === 'en' ? 'en' : 'ru',
-    theme: p.theme === 'corp' ? 'corp' : 'arena',
+    theme: p.theme === 'corp' || p.theme === 'wallst' ? p.theme : 'arena',
     mode: p.mode === 'light' || p.mode === 'dark' ? p.mode : 'system',
   };
 }
@@ -108,7 +108,8 @@ export function PrefsProvider({ children }: { children: ReactNode }) {
     root.dataset.theme = prefs.theme;
     root.dataset.mode = dark ? 'dark' : 'light';
     root.lang = prefs.lang;
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', prefs.theme === 'corp' ? (dark ? '#14181b' : '#ffffff') : '#16120e');
+    const color = prefs.theme === 'corp' ? (dark ? '#14181b' : '#ffffff') : prefs.theme === 'wallst' ? '#0b2a1f' : '#16120e';
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
   }, [prefs.theme, prefs.lang, dark]);
 
   const t = useCallback<T>((key, vars) => translate(prefs.lang, key, vars), [prefs.lang]);

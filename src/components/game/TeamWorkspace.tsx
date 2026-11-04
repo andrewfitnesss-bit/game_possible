@@ -19,6 +19,7 @@ import { supabase } from '../../lib/supabase';
 import type { Client, Specialization } from '../../lib/types';
 import { teamState, useTeamData } from '../../lib/useTeamData';
 import { useConfirm } from '../../ui/Confirm';
+import { chaChing } from '../../ui/MoneyRain';
 import { useToast } from '../../ui/Toast';
 import { Avatar, Loading, Stat, Tabs, type TabDef } from '../../ui/kit';
 import type { WorkspaceActions } from './actions';
@@ -75,6 +76,7 @@ export function TeamWorkspace({ teamId, mode }: { teamId: string; mode: Workspac
           return false;
         }
         if (success) toast.success(t(success));
+        if (fn === 'create_purchase' || fn === 'set_kam_spec') chaChing();
         return true;
       } catch (e) {
         toast.error(errText(e, t));

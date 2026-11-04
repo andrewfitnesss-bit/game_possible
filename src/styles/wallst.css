@@ -1,0 +1,199 @@
+/* Оформление «Уолл-стрит 90-х»: зелень денег, золото, костюмная полоска, засечки и бегущая строка.
+   Только оригинальная графика — паттерны, градиенты и эмодзи, без чужих изображений. */
+:root[data-theme='wallst'] {
+  --ink: #0b2a1f;
+  --ink-2: #0f3527;
+  --ink-3: #164331;
+  --ink-text: #f7efd8;
+  --ink-muted: #bfb48f;
+  --gold: #d4af37;
+  --gold-2: #f5d76e;
+  --ember: #1f7a4d;
+  --ember-2: #2e9e63;
+
+  --bg: #efe6cf;
+  --surface: #fffaf0;
+  --surface-2: #f8f1de;
+  --sunken: #ece2c6;
+  --border: #d9c99c;
+  --border-strong: #c2ab6d;
+  --text: #1c1a12;
+  --text-2: #4a4430;
+  --muted: #847a5c;
+
+  --primary: #11603d;
+  --primary-hover: #0c4d30;
+  --primary-soft: #e3efdf;
+  --primary-text: #0f5a39;
+  --on-primary: #fff8e1;
+  --focus: #d4af37;
+  --primary-shadow: rgba(17, 96, 61, 0.28);
+
+  --gold-soft: rgba(212, 175, 55, 0.18);
+  --gold-line: rgba(212, 175, 55, 0.55);
+  --gold-text: #8a6a12;
+
+  --radius-xs: 3px;
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --font-display: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --display-case: uppercase;
+  --display-spacing: 0.05em;
+  --shadow-sm: 0 1px 0 rgba(140, 110, 30, 0.12);
+  --shadow: 0 2px 0 rgba(140, 110, 30, 0.12), 0 8px 18px rgba(30, 40, 20, 0.1);
+  --shadow-lg: 0 18px 40px rgba(12, 30, 20, 0.3);
+}
+
+:root[data-theme='wallst'][data-mode='dark'] {
+  --bg: #07170f;
+  --surface: #0d2219;
+  --surface-2: #10291e;
+  --sunken: #061209;
+  --border: #2b4a35;
+  --border-strong: #3e6447;
+  --text: #f4ead0;
+  --text-2: #d6caa5;
+  --muted: #9c9172;
+  --primary: #d4af37;
+  --primary-hover: #e6c45a;
+  --primary-soft: #2a2a12;
+  --primary-text: #f5d76e;
+  --on-primary: #0b2a1f;
+  --gold-text: #f5d76e;
+  --ink: #04100a;
+  --ink-2: #071a10;
+  --ink-3: #0d2a1b;
+}
+
+/* Костюм в тонкую полоску + еле заметные доллары. */
+[data-theme='wallst'] body {
+  background-color: var(--bg);
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Ctext x='18' y='44' font-family='Georgia' font-size='28' fill='%23b89a3e' fill-opacity='0.09'%3E%24%3C/text%3E%3Ctext x='78' y='104' font-family='Georgia' font-size='22' fill='%23b89a3e' fill-opacity='0.07'%3E%24%3C/text%3E%3C/svg%3E"),
+    repeating-linear-gradient(90deg, transparent 0 22px, rgba(120, 95, 30, 0.07) 22px 23px);
+}
+[data-theme='wallst'][data-mode='dark'] body {
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Ctext x='18' y='44' font-family='Georgia' font-size='28' fill='%23d4af37' fill-opacity='0.06'%3E%24%3C/text%3E%3Ctext x='78' y='104' font-family='Georgia' font-size='22' fill='%23d4af37' fill-opacity='0.05'%3E%24%3C/text%3E%3C/svg%3E"),
+    repeating-linear-gradient(90deg, transparent 0 22px, rgba(212, 175, 55, 0.05) 22px 23px);
+}
+
+/* ---------- Шапка: зелёное сукно и двойная золотая линия ---------- */
+[data-theme='wallst'] .topbar {
+  background: linear-gradient(180deg, #0f3527 0%, #0b2a1f 100%);
+  border-bottom: 3px double var(--gold);
+  box-shadow: 0 8px 24px rgba(5, 20, 12, 0.35);
+}
+[data-theme='wallst'] .brand-mark {
+  background: radial-gradient(circle at 30% 25%, #1f5a3f, #0b2a1f 70%);
+  border: 2px solid var(--gold); font-size: 20px; border-radius: 50%;
+  box-shadow: 0 0 0 2px #0b2a1f, 0 0 0 3px var(--gold-line), 0 0 18px rgba(212, 175, 55, 0.35);
+}
+[data-theme='wallst'] .brand-title {
+  font-family: var(--font-display); font-weight: 900; font-style: italic; letter-spacing: 0.04em;
+  background: linear-gradient(180deg, #fff3c4 0%, #f5d76e 40%, #d4af37 70%, #9c7a1e 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+[data-theme='wallst'] .brand-sub { color: var(--gold); letter-spacing: 0.35em; }
+[data-theme='wallst'] .status-pill { background: rgba(212, 175, 55, 0.1); border-color: var(--gold-line); }
+[data-theme='wallst'] .timer {
+  font-family: var(--font-display); background: linear-gradient(180deg, #f5d76e, #d4af37); color: #0b2a1f;
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.45);
+}
+[data-theme='wallst'] .timer.urgent { background: #b3261e; color: #fff; }
+[data-theme='wallst'] .user-chip .role { color: var(--gold-2); }
+
+/* ---------- Бегущая строка котировок ---------- */
+.ticker { overflow: hidden; background: #050f0a; border-top: 1px solid rgba(212, 175, 55, 0.35); height: 28px; }
+.ticker-track { display: inline-flex; gap: 28px; white-space: nowrap; padding-left: 16px; animation: ticker 60s linear infinite; height: 100%; align-items: center; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+.tick { font-family: 'Courier New', ui-monospace, monospace; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; }
+.tick.up { color: #4ade80; }
+.tick.down { color: #f87171; }
+.tick.slogan { color: var(--gold-2); font-family: var(--font-display); font-style: italic; letter-spacing: 0.08em; }
+@keyframes ticker { to { transform: translateX(-50%); } }
+@media (prefers-reduced-motion: reduce) { .ticker-track { animation: none; padding-left: 16px; } }
+
+/* ---------- Карточки: кремовая бумага, золотая рамка, двойная линия ---------- */
+[data-theme='wallst'] .card,
+[data-theme='wallst'] .stat,
+[data-theme='wallst'] .tabs {
+  border: 1px solid var(--border-strong);
+  box-shadow: inset 0 0 0 3px var(--surface), inset 0 0 0 4px var(--gold-line), var(--shadow);
+}
+[data-theme='wallst'] .card h2,
+[data-theme='wallst'] .modal-head h2 { font-family: var(--font-display); font-weight: 800; letter-spacing: 0.01em; }
+[data-theme='wallst'] .team-name { font-family: var(--font-display); font-weight: 900; font-style: italic; color: var(--primary-text); }
+[data-theme='wallst'] .section-title { color: var(--gold-text); letter-spacing: 0.12em; }
+[data-theme='wallst'] .stat-value { font-family: var(--font-display); font-weight: 800; }
+[data-theme='wallst'] .bar > span,
+[data-theme='wallst'] .segments > span.on { background: linear-gradient(90deg, #11603d, #2e9e63, #d4af37); }
+
+/* ---------- Кнопки: золото и банкноты ---------- */
+[data-theme='wallst'] .btn-primary {
+  background: linear-gradient(180deg, #f5d76e 0%, #d4af37 55%, #b08d27 100%); color: #0b2a1f;
+  border: 1px solid #8a6a12; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800;
+  box-shadow: 0 2px 0 #7a5c0e, 0 6px 16px rgba(212, 175, 55, 0.35);
+}
+[data-theme='wallst'] .btn-primary:hover:not(:disabled) { background: linear-gradient(180deg, #fff0a8 0%, #e6c45a 55%, #c29d2f 100%); }
+[data-theme='wallst'] .btn-secondary { border-color: var(--primary); color: var(--primary-text); background: var(--surface); }
+[data-theme='wallst'] .tab[aria-selected='true'],
+[data-theme='wallst'] .tabs-pills .tab[aria-selected='true'] {
+  background: linear-gradient(180deg, #11603d, #0b2a1f); color: var(--gold-2); border-color: var(--gold);
+}
+[data-theme='wallst'] .tab[aria-selected='true'] svg { color: var(--gold-2); }
+[data-theme='wallst'] .coin::before { box-shadow: 0 0 6px rgba(212, 175, 55, 0.8), inset 0 0 0 1px rgba(120, 70, 10, 0.35); }
+
+/* ---------- Доска: столы брокеров ---------- */
+[data-theme='wallst'] .lane { background: var(--surface-2); border-color: var(--border-strong); }
+[data-theme='wallst'] .lane-icon { background: linear-gradient(160deg, #164331, #0b2a1f); color: var(--gold-2); border: 1px solid var(--gold-line); font-family: var(--font-display); }
+[data-theme='wallst'] .zone-active { border-top-color: #11603d; }
+[data-theme='wallst'] .zone-maint { border-top-color: var(--gold); }
+[data-theme='wallst'] .chip { border-color: var(--border); }
+[data-theme='wallst'] .chip.draggable:hover { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold-line), var(--shadow); }
+[data-theme='wallst'] .chip.overlay { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), var(--shadow-drag); }
+[data-theme='wallst'] .ssm-tag { background: #0b2a1f; color: var(--gold-2); border: 1px solid var(--gold-line); }
+[data-theme='wallst'] .code-badge { font-family: var(--font-display); border-radius: 3px; }
+[data-theme='wallst'] .callout-ember { background: linear-gradient(135deg, #0b2a1f, #164331); border-color: var(--gold); }
+[data-theme='wallst'] .client-hero { background: linear-gradient(135deg, #0b2a1f 0%, #164331 65%, #d4af37 260%); border-bottom: 3px double var(--gold); }
+[data-theme='wallst'] .client-hero h2 { font-family: var(--font-display); font-style: italic; }
+[data-theme='wallst'] .toast { border-left-color: var(--gold); background: #0b2a1f; }
+
+/* ---------- Экран входа: ночь на Уолл-стрит ---------- */
+[data-theme='wallst'] .login {
+  background:
+    radial-gradient(800px 500px at 20% 105%, rgba(212, 175, 55, 0.35), transparent 60%),
+    radial-gradient(700px 420px at 90% -10%, rgba(46, 158, 99, 0.35), transparent 60%),
+    repeating-linear-gradient(90deg, transparent 0 26px, rgba(212, 175, 55, 0.06) 26px 27px),
+    linear-gradient(160deg, #04100a 0%, #0b2a1f 55%, #164331 100%);
+  overflow: hidden;
+}
+[data-theme='wallst'] .login-title {
+  font-family: var(--font-display); font-style: italic; font-weight: 900; letter-spacing: 0;
+  background: linear-gradient(180deg, #fff6d0 0%, #f5d76e 35%, #d4af37 65%, #8a6a12 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  filter: drop-shadow(0 4px 0 #3b2c06) drop-shadow(0 10px 30px rgba(212, 175, 55, 0.45));
+}
+[data-theme='wallst'] .login-sub { font-family: var(--font-display); font-style: italic; color: var(--gold-2); letter-spacing: 0.18em; }
+[data-theme='wallst'] .login-kicker { color: var(--gold-2); }
+[data-theme='wallst'] .login-card { border: 2px solid var(--gold); box-shadow: inset 0 0 0 4px var(--surface), inset 0 0 0 5px var(--gold-line), 0 30px 80px rgba(0, 0, 0, 0.55); }
+[data-theme='wallst'] .login-points span { border-color: var(--gold-line); }
+
+/* ---------- Денежный дождь ---------- */
+.money-rain { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 120; }
+.money-rain.ambient { position: absolute; z-index: 0; opacity: 0.75; }
+.money-rain span {
+  position: absolute; top: -60px; animation-name: money-fall; animation-timing-function: linear;
+  animation-iteration-count: 1; animation-fill-mode: forwards; filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+}
+.money-rain.ambient span { animation-iteration-count: infinite; }
+.login-hero, .login-card { position: relative; z-index: 1; }
+.login-tools, .login-foot { z-index: 2; }
+@keyframes money-fall {
+  0% { transform: translateY(0) rotate(0deg); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(110vh) rotate(var(--spin)); opacity: 0.9; }
+}
+@media (prefers-reduced-motion: reduce) { .money-rain { display: none; } }
