@@ -126,6 +126,16 @@ export function AdminPage() {
     }
   }
 
+  async function renameTeam(teamId: string, name: string): Promise<boolean> {
+    const { error } = await supabase.rpc('rename_team', { p_team: teamId, p_name: name });
+    if (error) {
+      toast.error(errText(error, t));
+      return false;
+    }
+    await load();
+    return true;
+  }
+
   async function adoptPlayers() {
     setBusy(true);
     try {
@@ -181,13 +191,13 @@ export function AdminPage() {
             busy={busy}
             onMove={movePerson}
             onRole={changeRole}
-            onAddTeam={(name) => void run(() => supabase.from('teams').insert({ game_id: game.id, name }), t('admin.tableAdded', { name }))}
             onAddTeams={(names) =>
               void run(
                 () => supabase.from('teams').insert(names.map((name) => ({ game_id: game.id, name }))),
                 t('admin.tablesAdded', { n: names.length, names: names.join(', ') }),
               )
             }
+            onRenameTeam={(team, name) => renameTeam(team.id, name)}
             onRemoveTeam={(team) => void run(() => supabase.from('teams').delete().eq('id', team.id), t('admin.tableRemoved', { name: team.name }))}
             onSplit={() => void run(() => supabase.rpc('split_evenly'), t('admin.splitDone'))}
           />
