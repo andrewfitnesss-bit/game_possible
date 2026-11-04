@@ -50,7 +50,9 @@ export function AdminPage() {
       return;
     }
     const [tm, pr, st] = await Promise.all([
-      supabase.from('teams').select('*').eq('game_id', activeGame.id).order('created_at'),
+      // Второй ключ сортировки — id: у столов, созданных одним запросом, время совпадает, и без него
+      // порядок (а с ним номера столов) прыгал бы после каждого переименования.
+      supabase.from('teams').select('*').eq('game_id', activeGame.id).order('created_at').order('id'),
       supabase.from('profiles').select('*').eq('game_id', activeGame.id).neq('role', 'superadmin').order('full_name'),
       // Игроки, оставшиеся в прошлых играх (или без игры) — их можно перенести в текущую.
       supabase
@@ -193,7 +195,13 @@ export function AdminPage() {
             onRole={changeRole}
             onAddTeams={(names) =>
               void run(
-                () => supabase.from('teams').insert(names.map((name) => ({ game_id: game.id, name }))),
+                () => {
+                  // Время с шагом в 1 мс сохраняет порядок создания столов.
+                  const base = Date.now();
+                  return supabase
+                    .from('teams')
+                    .insert(names.map((name, i) => ({ game_id: game.id, name, created_at: new Date(base + i).toISOString() })));
+                },
                 t('admin.tablesAdded', { n: names.length, names: names.join(', ') }),
               )
             }
